@@ -1,38 +1,60 @@
-import FetchDataSteps from "@/components/tutorial/fetch-data-steps";
-import { createClient } from "@/utils/supabase/server";
-import { InfoIcon } from "lucide-react";
-import { redirect } from "next/navigation";
+'use client';
 
-export default async function ProtectedPage() {
-  const supabase = await createClient();
+import { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { listAudioFiles } from '@/utils/useUploader';
+import FileUpload from '@/components/file-upload';
+import FileList from '@/components/file-list';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Upload } from 'lucide-react';
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export default function AudioPage() {
+  const [files, setFiles] = useState<any[]>([]);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  if (!user) {
-    return redirect("/sign-in");
-  }
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  const fetchFiles = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const data = await listAudioFiles(supabase, session.user.id);
+      if (data) {
+        setFiles(data);
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    }
+  };
+
+  const handleUploadComplete = () => {
+    fetchFiles();
+    setIsUploadModalOpen(false);
+  };
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          This is a protected page that you can only see as an authenticated
-          user
-        </div>
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Audio Manager</h1>
+        <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload New File
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <FileUpload onUploadComplete={handleUploadComplete} />
+          </DialogContent>
+        </Dialog>
       </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">Your user details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          {JSON.stringify(user, null, 2)}
-        </pre>
-      </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next steps</h2>
-        <FetchDataSteps />
-      </div>
+      
+      <FileList files={files} onFilesChange={fetchFiles} />
     </div>
   );
-}
+} 
