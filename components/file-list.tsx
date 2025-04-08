@@ -118,11 +118,11 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
             {files.map((file) => (
               <div
                 key={file.name}
-                className="flex flex-col p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex flex-col sm:p-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <span className="truncate font-medium">{file.name}</span>
-                  <div className="space-x-2">
+                  <span className="line-clamp-2 sm:font-medium text-sm sm:text-base">{file.name}</span>
+                  <div className="flex items-center gap-1 sm:gap-2">
                     <Button
                       variant="outline"
                       size="sm"

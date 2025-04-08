@@ -40,16 +40,16 @@ export default function RootLayout({
         >
           <PlayerProvider>
             <main className="min-h-screen flex flex-col items-center">
-              <div className="flex-1 w-full flex flex-col gap-20 items-center">
+              <div className="flex-1 w-full flex flex-col sm:gap-6 gap-3 items-center justify-between min-h-full">
                 <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-                  <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+                  <div className="w-full max-w-5xl flex justify-between items-center sm:p-3 sm:px-5 p-2 text-sm">
                     <div className="flex gap-5 items-center font-semibold">
                       <Link href={"/"}>TibeeMusic</Link>
                     </div>
                     {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                   </div>
                 </nav>
-                <div className="flex flex-col gap-20 max-w-5xl p-5 pb-32">
+                <div className="flex flex-col sm:gap-6 gap-3 max-w-5xl w-full sm:p-5 p-1 sm:pb-32 pb-16">
                   {children}
                 </div>
 

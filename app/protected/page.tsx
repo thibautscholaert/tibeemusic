@@ -38,8 +38,8 @@ export default function AudioPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="w-full mx-auto sm:py-8 py-4">
+      <div className="flex justify-between items-center mb-4 sm:mb-6 gap-3 px-1">
         <h1 className="text-3xl font-bold">Audio Manager</h1>
         <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
           <DialogTrigger asChild>
