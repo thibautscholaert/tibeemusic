@@ -4,6 +4,7 @@ import FileList, { IFile } from '@/components/file-list';
 import FileUpload from '@/components/file-upload';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { usePlayer } from '@/contexts/player-context';
 import { createClient } from '@/utils/supabase/client';
 import { getAudioUrl, listAudioFiles } from '@/utils/useUploader';
 import { Upload } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useEffect, useState } from 'react';
 export default function AudioPage() {
   const [files, setFiles] = useState<IFile[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const { addToQueue } = usePlayer();
 
   useEffect(() => {
     fetchFiles();
@@ -41,7 +43,8 @@ export default function AudioPage() {
                 return updatedFiles;
               }
             );
-            });
+            addToQueue(file);
+          });
           }
         }
       }

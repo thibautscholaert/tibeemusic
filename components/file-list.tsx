@@ -3,17 +3,18 @@
 import { usePlayer } from '@/contexts/player-context';
 import { createClient } from '@/utils/supabase/client';
 import { getDlUrl } from '@/utils/useUploader';
-import { Download, Loader2, Play, Trash2 } from 'lucide-react';
+import { Download, Loader2, Pause, Play, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import classNames from 'classnames';
 
 export interface IFile {
   id: string;
   name: string;
-  url?: string; 
+  url?: string;
 }
 interface FileListProps {
   files: IFile[];
@@ -23,7 +24,7 @@ interface FileListProps {
 export default function FileList({ files, onFilesChange }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
-  const { play, addToQueue } = usePlayer();
+  const { currentFile, play, pause, isPlaying } = usePlayer();
 
   const handlePlay = async (file: IFile) => {
     try {
@@ -112,45 +113,68 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {files.map((file, index) => (
-              <div
-                key={`${file.name}-${index}`}
-                className="flex flex-col sm:p-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="line-clamp-2 sm:font-medium text-sm sm:text-base">{file.name}</span>
-                  <div className="flex items-center gap-1 sm:gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePlay(file)}
-                      disabled={isLoading || !file.url}
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(file)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => confirmDelete(file)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            {files.map((file, index) => {
+              const isPlayingFile = currentFile?.id === file.id && isPlaying;
+              return (
+                <div
+                  key={`${file.name}-${index}`}
+                  className={classNames("flex flex-col sm:p-2 p-1 border rounded-lg  transition-colors", {
+                    // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
+                    // 'animate-pulse': isPlayingFile,
+                    // 'hover:bg-muted/50': !isPlayingFile,
+                  })}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="line-clamp-2 sm:font-medium text-sm sm:text-base">{file.name}</span>
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      {isPlayingFile ? (<Button
+                        variant="outlineSecondary"
+                        size="sm"
+                        // className='bg-lime-400'
+                        onClick={() => isPlaying ? pause() : play(file)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : isPlaying ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>) : <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePlay(file)}
+                        disabled={isLoading || !file.url}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      }
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(file)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => confirmDelete(file)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            
+              )
+            })}
+
             {files.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No files uploaded yet</p>
@@ -159,10 +183,11 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
             )}
           </div>
         </CardContent>
-      </Card>
+      </Card >
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+      < Dialog open={!!fileToDelete
+      } onOpenChange={(open) => !open && setFileToDelete(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
@@ -179,7 +204,7 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog >
     </>
   );
 } 

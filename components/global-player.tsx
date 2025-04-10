@@ -12,6 +12,7 @@ import { Slider } from './ui/slider';
 
 interface GlobalPlayerProps {
   currentFile: IFile | null;
+  isPlaying: boolean;
   onPlay: (file: IFile) => void;
   onPause: () => void;
   hasNext: () => boolean;
@@ -22,6 +23,7 @@ interface GlobalPlayerProps {
 
 export default function GlobalPlayer({
   currentFile,
+  isPlaying: isPlayingExt,
   onPlay,
   onPause,
   hasNext,
@@ -51,20 +53,18 @@ export default function GlobalPlayer({
   }, []);
 
   useEffect(() => {
-    if (currentFile) {
-      loadAudio(currentFile);
+    if (currentFile?.url) {
+      loadAudio();
     }
   }, [currentFile]);
 
-  const loadAudio = async (file: IFile) => {
-    try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Not authenticated');
-        return;
-      }
+  useEffect(() => {
+    setIsPlaying(!isPlayingExt);
+    togglePlayPause(!isPlayingExt);
+  }, [isPlayingExt]);
 
+  const loadAudio = async () => {
+    try {
       // Stop current audio if playing
       if (audioRef.current) {
         audioRef.current.pause();
@@ -77,7 +77,7 @@ export default function GlobalPlayer({
       setIsLoading(true);
 
       // Get URL for the new audio file
-      const url = await getAudioUrl(supabase, session.user.id, file.id, file.name);
+      const url = currentFile?.url
       if (!url) {
         toast.error('Error getting audio URL');
         setIsLoading(false);
@@ -168,7 +168,7 @@ export default function GlobalPlayer({
     }
   };
 
-  const togglePlayPause = () => {
+  const togglePlayPause = (isPlaying: boolean) => {
     if (!currentFile) return;
 
     if (isPlaying) {
@@ -212,7 +212,7 @@ export default function GlobalPlayer({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={togglePlayPause}
+                onClick={() => togglePlayPause(isPlaying)}
                 className="h-10 w-10"
                 disabled={isLoading}
               >
