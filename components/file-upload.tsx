@@ -21,7 +21,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     size: string;
     type: string;
   } | null>(null);
-
+  
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -60,10 +60,12 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
       }
 
       const error = await uploadAudio(supabase, selectedFile, session.user.id);
+      console.log(error);
       if (error) {
         toast.error('Error uploading file');
       } else {
         toast.success('File uploaded successfully');
+        console.log('File uploaded successfully');
         onUploadComplete();
         resetState();
       }

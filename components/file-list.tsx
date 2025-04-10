@@ -1,26 +1,31 @@
 'use client';
 
+import { usePlayer } from '@/contexts/player-context';
+import { createClient } from '@/utils/supabase/client';
+import { getDlUrl } from '@/utils/useUploader';
+import { Download, Loader2, Play, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { createClient } from '@/utils/supabase/client';
-import { getAudioUrl } from '@/utils/useUploader';
-import { Download, Loader2, Play, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { usePlayer } from '@/contexts/player-context';
 
+export interface IFile {
+  id: string;
+  name: string;
+  url?: string; 
+}
 interface FileListProps {
-  files: any[];
+  files: IFile[];
   onFilesChange: () => void;
 }
 
 export default function FileList({ files, onFilesChange }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
   const { play, addToQueue } = usePlayer();
 
-  const handlePlay = async (filename: string) => {
+  const handlePlay = async (file: IFile) => {
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -31,16 +36,8 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
 
       setIsLoading(true);
 
-      // Get URL for the audio file
-      const url = await getAudioUrl(supabase, session.user.id, filename);
-      if (!url) {
-        toast.error('Error getting audio URL');
-        setIsLoading(false);
-        return;
-      }
-
       // Play the file using the global player
-      play(filename);
+      play(file);
       setIsLoading(false);
     } catch (error) {
       toast.error('Error playing audio');
@@ -48,7 +45,7 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
     }
   };
 
-  const handleDownload = async (filename: string) => {
+  const handleDownload = async (file: IFile) => {
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -57,11 +54,11 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
         return;
       }
 
-      const url = await getAudioUrl(supabase, session.user.id, filename);
+      const url = await getDlUrl(supabase, session.user.id, file.id);
       if (url) {
         const a = document.createElement('a');
         a.href = url;
-        a.download = filename;
+        a.download = file.name;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -74,8 +71,8 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
     }
   };
 
-  const confirmDelete = (filename: string) => {
-    setFileToDelete(filename);
+  const confirmDelete = (file: IFile) => {
+    setFileToDelete(file);
   };
 
   const handleDelete = async () => {
@@ -115,9 +112,9 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {files.map((file) => (
+            {files.map((file, index) => (
               <div
-                key={file.name}
+                key={`${file.name}-${index}`}
                 className="flex flex-col sm:p-4 p-2 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -126,8 +123,8 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handlePlay(file.name)}
-                      disabled={isLoading}
+                      onClick={() => handlePlay(file)}
+                      disabled={isLoading || !file.url}
                     >
                       {isLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -138,14 +135,14 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDownload(file.name)}
+                      onClick={() => handleDownload(file)}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => confirmDelete(file.name)}
+                      onClick={() => confirmDelete(file)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -153,6 +150,7 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
                 </div>
               </div>
             ))}
+            
             {files.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No files uploaded yet</p>
@@ -169,7 +167,7 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{fileToDelete}"? This action cannot be undone.
+              Are you sure you want to delete "{fileToDelete?.name}"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

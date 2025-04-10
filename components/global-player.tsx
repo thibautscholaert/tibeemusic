@@ -6,13 +6,16 @@ import { getAudioUrl } from '@/utils/useUploader';
 import { ChevronsLeft, FastForward, Loader2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { IFile } from './file-list';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
 
 interface GlobalPlayerProps {
-  currentFile: string | null;
-  onPlay: (filename: string) => void;
+  currentFile: IFile | null;
+  onPlay: (file: IFile) => void;
   onPause: () => void;
+  hasNext: () => boolean;
+  hasPrevious: () => boolean;
   onNext: () => void;
   onPrevious: () => void;
 }
@@ -21,6 +24,8 @@ export default function GlobalPlayer({
   currentFile,
   onPlay,
   onPause,
+  hasNext,
+  hasPrevious,
   onNext,
   onPrevious
 }: GlobalPlayerProps) {
@@ -51,7 +56,7 @@ export default function GlobalPlayer({
     }
   }, [currentFile]);
 
-  const loadAudio = async (filename: string) => {
+  const loadAudio = async (file: IFile) => {
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -72,7 +77,7 @@ export default function GlobalPlayer({
       setIsLoading(true);
 
       // Get URL for the new audio file
-      const url = await getAudioUrl(supabase, session.user.id, filename);
+      const url = await getAudioUrl(supabase, session.user.id, file.id, file.name);
       if (!url) {
         toast.error('Error getting audio URL');
         setIsLoading(false);
@@ -80,6 +85,7 @@ export default function GlobalPlayer({
       }
 
       // Create new audio element
+      console.log(url);
       const newAudio = new Audio(url);
       newAudio.id = 'global-player-audio'; // Ajouter un ID pour faciliter la sélection
 
@@ -198,6 +204,7 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={onPrevious}
+                disabled={!hasPrevious()}
                 className="h-8 w-8"
               >
                 <SkipBack className="h-4 w-4" />
@@ -221,6 +228,7 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={onNext}
+                disabled={!hasNext()}
                 className="h-8 w-8"
               >
                 <SkipForward className="h-4 w-4" />
@@ -275,7 +283,7 @@ export default function GlobalPlayer({
             <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
           </div>
           <div className="text-sm font-medium truncate">
-            {currentFile}
+            {currentFile.name}
           </div>
         </div>
       </div>

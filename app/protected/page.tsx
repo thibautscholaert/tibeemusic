@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { listAudioFiles } from '@/utils/useUploader';
+import FileList, { IFile } from '@/components/file-list';
 import FileUpload from '@/components/file-upload';
-import FileList from '@/components/file-list';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { createClient } from '@/utils/supabase/client';
+import { getAudioUrl, listAudioFiles } from '@/utils/useUploader';
 import { Upload } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function AudioPage() {
-  const [files, setFiles] = useState<any[]>([]);
+  const [files, setFiles] = useState<IFile[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   useEffect(() => {
@@ -18,6 +18,7 @@ export default function AudioPage() {
   }, []);
 
   const fetchFiles = async () => {
+    console.log('fetchFiles');
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
@@ -25,7 +26,24 @@ export default function AudioPage() {
 
       const data = await listAudioFiles(supabase, session.user.id);
       if (data) {
+        console.log(data);
         setFiles(data);
+        for(const file of data) {
+          if (file.id) {
+            getAudioUrl(supabase, session.user.id, file.id, file.name).then((url) => {
+              file.url = url;
+              setFiles((prevFiles) => { 
+                const updatedFiles = [...prevFiles];
+                const index = updatedFiles.findIndex(f => f.id === file.id);
+                if (index !== -1) {
+                  updatedFiles[index] = { ...updatedFiles[index], url };
+                }
+                return updatedFiles;
+              }
+            );
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching files:', error);
@@ -39,6 +57,7 @@ export default function AudioPage() {
 
   return (
     <div className="w-full mx-auto sm:py-8 py-4">
+      {/* <UploadToDrive /> */}
       <div className="flex justify-between items-center mb-4 sm:mb-6 gap-3 px-1">
         <h1 className="text-3xl font-bold">Audio Manager</h1>
         <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>

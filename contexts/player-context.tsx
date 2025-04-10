@@ -1,26 +1,29 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { IFile } from '@/components/file-list';
+import { createContext, ReactNode, useContext, useState } from 'react';
 
 interface PlayerContextType {
-  currentFile: string | null;
-  queue: string[];
-  play: (filename: string) => void;
+  currentFile: IFile | null;
+  queue: IFile[];
+  play: (file: IFile) => void;
   pause: () => void;
+  hasNext: () => boolean;
+  hasPrevious: () => boolean;
   next: () => void;
   previous: () => void;
-  addToQueue: (filename: string) => void;
+  addToQueue: (file: IFile) => void;
   clearQueue: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const [currentFile, setCurrentFile] = useState<string | null>(null);
-  const [queue, setQueue] = useState<string[]>([]);
+  const [currentFile, setCurrentFile] = useState<IFile | null>(null);
+  const [queue, setQueue] = useState<IFile[]>([]);
 
-  const play = (filename: string) => {
-    setCurrentFile(filename);
+  const play = (file: IFile | null) => {
+    setCurrentFile(file);
   };
 
   const pause = () => {
@@ -32,17 +35,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const nextFile = queue[0];
       setQueue((prevQueue) => prevQueue.slice(1));
       setCurrentFile(nextFile);
-    } else {
-      setCurrentFile(null);
     }
+    //  else {
+    //   setCurrentFile(null);
+    // }
+  };
+
+
+  const hasNext = () => {
+    return queue.length > 0;
+  };
+
+  const hasPrevious = () => {
+    return  false; // This would require keeping track of history, which we're not implementing for simplicity
   };
 
   const previous = () => {
     // This would require keeping track of history, which we're not implementing for simplicity
   };
 
-  const addToQueue = (filename: string) => {
-    setQueue((prevQueue) => [...prevQueue, filename]);
+  const addToQueue = (file: IFile) => {
+    setQueue((prevQueue) => [...prevQueue, file]);
   };
 
   const clearQueue = () => {
@@ -56,6 +69,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         queue,
         play,
         pause,
+        hasNext,
+        hasPrevious,
         next,
         previous,
         addToQueue,
