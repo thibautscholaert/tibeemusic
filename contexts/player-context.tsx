@@ -1,12 +1,13 @@
 'use client';
 
-import { IFile } from '@/components/file-list';
+import { IFile } from '@/types/file';
 import { createContext, ReactNode, useContext, useState } from 'react';
 
 interface PlayerContextType {
   currentFile: IFile | null;
   isPlaying: boolean;
   queue: IFile[];
+  queueIndex: number;
   play: (file: IFile) => void;
   pause: () => void;
   hasNext: () => boolean;
@@ -63,7 +64,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const addToQueue = (file: IFile) => {
-    console.log('Adding to queue:', file);
+    console.log('Adding to queue:', file.id, file.name);
+    // Check if the file is already in the queue
+    const isFileInQueue = queue.some((f) => f.id === file.id);
+    if (isFileInQueue) {
+      console.log('File is already in the queue:', file);
+      return;
+    }
     // if (queue.length === 0) {
     //   setCurrentFile(file);
     //   setQueueIndex(0);
@@ -82,6 +89,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         currentFile,
         isPlaying,
         queue,
+        queueIndex,
         play,
         pause,
         hasNext,

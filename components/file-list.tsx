@@ -1,27 +1,25 @@
 'use client';
 
 import { usePlayer } from '@/contexts/player-context';
+import { IFile } from '@/types/file';
 import { createClient } from '@/utils/supabase/client';
 import { getDlUrl } from '@/utils/useUploader';
-import { Download, Loader2, Pause, Play, Trash2 } from 'lucide-react';
+import classNames from 'classnames';
+import { AirplayIcon, Download, EllipsisVertical, Loader2, Pause, Play, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import classNames from 'classnames';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
 
-export interface IFile {
-  id: string;
-  name: string;
-  url?: string;
-}
 interface FileListProps {
   files: IFile[];
   onFilesChange: () => void;
+  streamizableFile: (file: IFile) => void;
 }
 
-export default function FileList({ files, onFilesChange }: FileListProps) {
+export default function FileList({ files, onFilesChange, streamizableFile }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
   const { currentFile, play, pause, isPlaying } = usePlayer();
@@ -76,6 +74,7 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
     setFileToDelete(file);
   };
 
+
   const handleDelete = async () => {
     if (!fileToDelete) return;
 
@@ -112,63 +111,95 @@ export default function FileList({ files, onFilesChange }: FileListProps) {
           <CardDescription>Play, download, or delete your audio files</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="flex flex-wrap gap-1 sm:gap-2 justify-center items-center">
             {files.map((file, index) => {
               const isPlayingFile = currentFile?.id === file.id && isPlaying;
+              const isFileLoading = isLoading || file?.loading
+              // console.log('file', file, isLoading, file?.loading, isFileLoading);
               return (
                 <div
                   key={`${file.name}-${index}`}
-                  className={classNames("flex flex-col sm:p-2 p-1 border rounded-lg  transition-colors", {
+                  className={classNames("flex flex-col sm:p-2 p-1 border rounded-lg sm:text-sm text-xs transition-colors w-[500px] max-w-full", {
                     // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
                     // 'animate-pulse': isPlayingFile,
                     // 'hover:bg-muted/50': !isPlayingFile,
                   })}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="line-clamp-2 sm:font-medium text-sm sm:text-base">{file.name}</span>
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <span className="line-clamp-1 text-ellipsis">{file.name}</span>
+                    <div className="flex items-center gap-1">
                       {isPlayingFile ? (<Button
                         variant="outlineSecondary"
-                        size="sm"
+                        size="xs"
                         // className='bg-lime-400'
                         onClick={() => isPlaying ? pause() : play(file)}
-                        disabled={isLoading}
+                        disabled={isFileLoading}
                       >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {isFileLoading ? (
+                          <Loader2 className="sm:h-4 sm:w-4 h-3 w-3 animate-spin" />
                         ) : isPlaying ? (
-                          <Pause className="h-4 w-4" />
+                          <Pause className="sm:h-4 sm:w-4 h-3 w-3" />
                         ) : (
-                          <Play className="h-4 w-4" />
+                          <Play className="sm:h-4 sm:w-4 h-3 w-3" />
                         )}
                       </Button>) : <Button
                         variant="outline"
-                        size="sm"
+                        size="xs"
                         onClick={() => handlePlay(file)}
-                        disabled={isLoading || !file.url}
+                        disabled={isFileLoading || !file.url}
                       >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {isFileLoading ? (
+                          <Loader2 className="sm:h-4 sm:w-4 h-3 w-3 animate-spin" />
                         ) : (
-                          <Play className="h-4 w-4" />
+                          <Play className="sm:h-4 sm:w-4 h-3 w-3" />
                         )}
                       </Button>
                       }
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(file)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => confirmDelete(file)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {Boolean(file.url) ?
+                        <div className='bg-lime-500 border border-input bg-background shadow-sm h-6 rounded-md px-2 text-xs inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium'>
+                          <AirplayIcon className="sm:h-4 sm:w-4 h-3 w-3" />
+                        </div>
+                        :
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          disabled={isFileLoading}
+                          onClick={() => streamizableFile(file)}
+                        >
+                          <AirplayIcon className="sm:h-4 sm:w-4 h-3 w-3" />
+                        </Button>
+                      }
+
+                      {isFileLoading?.valueOf()}
+
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size={"sm"}>
+                            <EllipsisVertical className="sm:h-4 sm:w-4 h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-content" align="start">
+                          <div className='flex flex-col gap-1'>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              onClick={() => handleDownload(file)}
+                            >
+                              <Download className="sm:h-4 sm:w-4 h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="xs"
+                              onClick={() => confirmDelete(file)}
+                            >
+                              <Trash2 className="sm:h-4 sm:w-4 h-3 w-3" />
+                            </Button>
+                          </div>
+
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>

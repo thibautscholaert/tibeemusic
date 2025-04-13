@@ -1,0 +1,19 @@
+export interface GoogleDriveFile {
+  id: string
+  mimeType: string
+  name: string
+  url: string
+  webViewLink: string
+}
+
+export interface GoogleDriveFolder {
+  id: string
+  mimeType: string
+  name: string
+  url: string
+  webViewLink: string
+}
+
+export interface GoogleDriveFileList {
+  files: GoogleDriveFile[]
+}

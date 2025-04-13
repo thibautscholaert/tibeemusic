@@ -15,7 +15,7 @@ const connectGoogleDrive = async () => {
         response_type: 'code',
         access_type: 'offline',
         prompt: 'consent',
-        scope: 'https://www.googleapis.com/auth/drive.file',
+        scope: 'https://www.googleapis.com/auth/drive',
       })
   
       window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`

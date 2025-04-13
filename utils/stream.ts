@@ -1,26 +1,34 @@
-import { SupabaseClient } from "@supabase/supabase-js"
-import { getDriveFileBlob } from "./googleDrive"
-import { uploadToSupabase } from "./supabase/supabaseStorage"
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getCachedFileList } from "./cache";
+import { getDriveFileBlob } from "./googleDrive";
+import { uploadToSupabase } from "./supabase/supabaseStorage";
 
 export async function streamFromDriveToSupabase(
-    supabase: SupabaseClient,
-    fileId: string,
-    accessToken: string
-  ): Promise<string> {
-    // Vérifie si le fichier est déjà sur Supabase
-    const { data: list } = await supabase.storage.from('temp-audio').list()
-    const exists = list?.find((f) => f.name === fileId)
-  
-    if (!exists) {
+  supabase: SupabaseClient,
+  fileId: string,
+  accessToken: string,
+  streamify = true
+): Promise<string | null> {
+  // Vérifie si le fichier est déjà sur Supabase
+  const exists = await isFileStreamable(supabase, fileId);
+
+  if (!exists) {
+    if (streamify) {
       const blob = await getDriveFileBlob(fileId, accessToken)
       await uploadToSupabase(supabase, fileId, blob)
-    //   await fetch('/api/stream', {
-    //     method: 'POST',
-    //     body: JSON.stringify({googleFileId: fileId, accessToken}),
-    // })
+    } else {
+      return null;
     }
-  
-    const { data } = supabase.storage.from('temp-audio').getPublicUrl(fileId)
-    return data.publicUrl
   }
-  
+
+  const { data } = supabase.storage.from('temp-audio').getPublicUrl(fileId)
+  return data.publicUrl
+}
+
+export async function isFileStreamable(
+  supabase: SupabaseClient,
+  fileId: string,
+): Promise<boolean> {
+  const list = await getCachedFileList(supabase);
+  return list.some((f) => f.name === fileId);
+}

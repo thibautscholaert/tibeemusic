@@ -1,17 +1,17 @@
 'use client';
 
+import { IFile } from '@/types/file';
 import { formatTime } from '@/utils/formatTime';
-import { createClient } from '@/utils/supabase/client';
-import { getAudioUrl } from '@/utils/useUploader';
-import { ChevronsLeft, FastForward, Loader2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import { ChevronsDownIcon, ChevronsLeft, ChevronsRight, ChevronsUpIcon, Loader2, Pause, Play, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { IFile } from './file-list';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
 
 interface GlobalPlayerProps {
   currentFile: IFile | null;
+  queue: IFile[];
+  queueIndex: number;
   isPlaying: boolean;
   onPlay: (file: IFile) => void;
   onPause: () => void;
@@ -24,6 +24,8 @@ interface GlobalPlayerProps {
 export default function GlobalPlayer({
   currentFile,
   isPlaying: isPlayingExt,
+  queue,
+  queueIndex,
   onPlay,
   onPause,
   hasNext,
@@ -31,6 +33,7 @@ export default function GlobalPlayer({
   onNext,
   onPrevious
 }: GlobalPlayerProps) {
+  const [hidden, setHidden] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(0.2);
@@ -195,11 +198,11 @@ export default function GlobalPlayer({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-50">
-      <div className="container mx-auto">
-        <div className="flex flex-col space-y-2">
+    <div className={`fixed bottom-0 left-0 right-0 bg-background border-t pb-1 sm:pb-4 px-1 sm:px-6 z-50 flex flex-col items-center justify-center transition-transform duration-300 ${hidden ? 'translate-y-[calc(100%-2rem)] sm:translate-y-[calc(100%-2.5rem)]' : 'translate-y-0'}`}>
+      <div className="mx-auto w-full max-w-2xl flex flex-col items-center justify-center space-y-4">
+        <div className="flex flex-col w-full sm:space-y-2 space-y-1">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-1 sm:space-x-4">
               <Button
                 variant="ghost"
                 size="icon"
@@ -213,13 +216,13 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={() => togglePlayPause(isPlaying)}
-                className="h-10 w-10"
+                className="sm:h-10 sm:w-10 h-6 w-6"
                 disabled={isLoading}
               >
                 {isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : isPlaying ? (
-                  <Pause className="h-5 w-5" />
+                  <Pause className="h-5 w-5 animate-pulse" />
                 ) : (
                   <Play className="h-5 w-5" />
                 )}
@@ -233,8 +236,9 @@ export default function GlobalPlayer({
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
+
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center sm:space-x-2 space-x-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -265,9 +269,20 @@ export default function GlobalPlayer({
                 onClick={skipForward}
                 className="h-8 w-8"
               >
-                <FastForward className="h-4 w-4" />
+                <ChevronsRight className="h-4 w-4" />
               </Button>
-
+              <Button
+                onClick={() => setHidden(!hidden)}
+                size='xs'
+                variant='outline'
+                // className="absolute top-0.5 right-0.5"
+                >
+                {hidden ? (
+                  <ChevronsUpIcon className="h-4 w-4" />
+                ) : (
+                  <ChevronsDownIcon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -282,11 +297,13 @@ export default function GlobalPlayer({
             />
             <span className="text-xs text-muted-foreground">{formatTime(duration)}</span>
           </div>
-          <div className="text-sm font-medium truncate">
-            {currentFile.name}
+          <div className="flex items-center w-full gap-2">
+            <span className="text-xs">{queueIndex + 1}/{queue.length}</span>
+            {" - "}
+            <span className="text-sm font-medium truncate">{currentFile.name}</span>
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 } 
