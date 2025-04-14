@@ -11,12 +11,10 @@ import {
   Download,
   EditIcon,
   EllipsisVertical,
-  ListPlusIcon,
   Loader2,
   Pause,
   Play,
-  PlusSquareIcon,
-  Trash2,
+  Trash2
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
@@ -31,6 +29,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { Input } from './ui/input';
 
 interface FileListProps {
   files: IFile[];
@@ -189,11 +188,7 @@ export default function FileList({
         <CardHeader>
           <CardTitle>Your Audio Files</CardTitle>
           <CardDescription className="flex items-center justify-center gap-1 sm:gap-4">
-            <Button className="gap-1 px-2 sm:gap-2 sm:px-4" size="default">
-              <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="text-xs sm:text-sm">Current playlist</span>
-            </Button>
-            <input
+            <Input
               type="text"
               value={query}
               onChange={handleChange}
@@ -229,11 +224,18 @@ export default function FileList({
                           // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
                           // 'animate-pulse': isPlayingFile,
                           // 'hover:bg-muted/50': !isPlayingFile,
-                          'bg-indigo-200/30 dark:bg-indigo-900/30': streamable,
+                          // 'bg-green-200/30 dark:bg-green-600/30': streamable,
                         }
                       )}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
+                        {streamable ? (
+                          <AudioLinesIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 text-lime-400 shrink-0", {
+                            'animate-pulse': isPlayingFile,
+                          })} />
+                        ) : (
+                          <div className="h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
                         <span className="line-clamp-1 text-ellipsis">{file.name}</span>
                         <div className="flex items-center gap-1">
                           {streamable ? (
@@ -274,7 +276,7 @@ export default function FileList({
                               disabled={isFileLoading}
                               onClick={() => streamizableFile(file)}
                             >
-                              <ListPlusIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                              <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           )}
 

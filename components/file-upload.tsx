@@ -21,7 +21,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     size: string;
     type: string;
   } | null>(null);
-  
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -33,13 +33,13 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     }
 
     setSelectedFile(file);
-    
+
     // Format file size
     const sizeInMB = file.size / (1024 * 1024);
-    const formattedSize = sizeInMB < 1 
-      ? `${(file.size / 1024).toFixed(2)} KB` 
+    const formattedSize = sizeInMB < 1
+      ? `${(file.size / 1024).toFixed(2)} KB`
       : `${sizeInMB.toFixed(2)} MB`;
-    
+
     setFileInfo({
       name: file.name,
       size: formattedSize,
@@ -86,60 +86,60 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Upload Audio File</CardTitle>
-        <CardDescription>Select an audio file to upload</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {!selectedFile ? (
-          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg">
-            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-            <Input
-              type="file"
-              accept="audio/*"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-            />
-            <p className="text-sm text-muted-foreground mt-2">
-              Supported formats: MP3, WAV, OGG, etc.
-            </p>
+    // <Card>
+    //   {/* <CardHeader>
+    //     <CardTitle>Upload Audio File</CardTitle>
+    //     <CardDescription>Select an audio file to upload</CardDescription>
+    //   </CardHeader> */}
+    //   <CardContent>
+    !selectedFile ? (
+      <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg">
+        <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+        <Input
+          type="file"
+          accept="audio/*"
+          onChange={handleFileChange}
+          className="cursor-pointer"
+        />
+        <p className="text-sm text-muted-foreground mt-2">
+          Supported formats: MP3, WAV, OGG, etc.
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        <div className="p-4 border rounded-lg">
+          <h3 className="font-medium mb-2">File Information</h3>
+          <div className="space-y-1 text-sm">
+            <p><span className="font-medium">Name:</span> {fileInfo?.name}</p>
+            <p><span className="font-medium">Size:</span> {fileInfo?.size}</p>
+            <p><span className="font-medium">Type:</span> {fileInfo?.type}</p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="p-4 border rounded-lg">
-              <h3 className="font-medium mb-2">File Information</h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="font-medium">Name:</span> {fileInfo?.name}</p>
-                <p><span className="font-medium">Size:</span> {fileInfo?.size}</p>
-                <p><span className="font-medium">Type:</span> {fileInfo?.type}</p>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={handleCancel}
-                disabled={uploading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleUpload}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  'Upload'
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+        </div>
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={handleCancel}
+            disabled={uploading}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleUpload}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              'Upload'
+            )}
+          </Button>
+        </div>
+      </div>
+      //     )}
+      //   </CardContent>
+      // </Card>
+    ));
 } 

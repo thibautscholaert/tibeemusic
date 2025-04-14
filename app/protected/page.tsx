@@ -4,7 +4,7 @@ import FileList from '@/components/file-list';
 import FileUpload from '@/components/file-upload';
 import FolderList from '@/components/folder-list';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { usePlayer } from '@/contexts/player-context';
 import { IFile } from '@/types/file';
 import { IFolder } from '@/types/folder';
@@ -25,13 +25,14 @@ export default function AudioPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [queueSelected, setQueueSelected] = useState(false);
 
   const [filterQuery, setFilterQuery] = useState('');
-  const { addToQueue } = usePlayer();
+  const { addToQueue, queue } = usePlayer();
 
   useEffect(() => {
     checkGoogleDriveConnected();
-    fetchFiles();
+    // fetchFiles();
     fetchFolders();
   }, []);
 
@@ -101,8 +102,8 @@ export default function AudioPage() {
   };
 
   const hasMore = useMemo(() => {
-    return nextPageToken !== undefined && nextPageToken !== null && nextPageToken !== '';
-  }, [nextPageToken]);
+    return queueSelected && nextPageToken !== undefined && nextPageToken !== null && nextPageToken !== '';
+  }, [nextPageToken, queueSelected]);
 
   const fetchFiles = async () => {
     console.log('fetching files', folder);
@@ -113,6 +114,12 @@ export default function AudioPage() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+
+      if (folder?.id === 'CURRENT_PLAYLIST') {
+        setFiles(queue);
+        setIsLoadingFiles(false);
+        return;
+      }
 
       const data = await listAudioFiles(supabase, session.user.id, {
         folderId: folder?.id,
@@ -198,7 +205,7 @@ export default function AudioPage() {
       if (data) {
         console.log('folders', data);
         setFolders(data);
-        setFolder(data[0]);
+        setFolder(data[1] ? data[1] : data[0]);
       }
     } catch (error) {
       console.error('Error fetching files:', error);
@@ -209,6 +216,15 @@ export default function AudioPage() {
     fetchFiles();
     setIsUploadModalOpen(false);
   };
+
+  const selectCurrentPlaylist = () => {
+    setQueueSelected(!queueSelected);
+    if (queueSelected) {
+      fetchFiles();
+    } else {
+      setFiles(queue);
+    }
+  }
 
   return (
     <div className="mx-auto w-full py-4 sm:py-8">
@@ -235,6 +251,7 @@ export default function AudioPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
+            <DialogTitle></DialogTitle>
             <FileUpload onUploadComplete={handleUploadComplete} />
           </DialogContent>
         </Dialog>
@@ -247,6 +264,8 @@ export default function AudioPage() {
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
+      // queueSelected={queueSelected}
+      // selectCurrentPlaylist={selectCurrentPlaylist}
       />
 
       <FileList
@@ -258,6 +277,7 @@ export default function AudioPage() {
         isFetchingMore={isFetchingMore}
         streamizableFile={streamizableFile}
         isLoadingFiles={isLoadingFiles}
+
       />
     </div>
   );

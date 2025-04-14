@@ -20,7 +20,7 @@ export async function uploadAudio(supabase: SupabaseClient, file: File, userId: 
     }
 }
 
-export async function listAudioFiles(supabase: SupabaseClient, userId: string, options: {folderId?: string, pageToken?: string, filterQuery?: string}): Promise<GoogleDrivePage |{files: IFile[]} | null> {
+export async function listAudioFiles(supabase: SupabaseClient, userId: string, options: { folderId?: string, pageToken?: string, filterQuery?: string }): Promise<GoogleDrivePage | { files: IFile[] } | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
         // return listFilesInFolder(googleDriveAccessToken, options);
@@ -34,7 +34,7 @@ export async function listAudioFiles(supabase: SupabaseClient, userId: string, o
             console.error('Error listing files:', error);
             return null;
         }
-        return {files: data};
+        return { files: data };
     }
 
 }
@@ -50,9 +50,11 @@ export async function getDefaultFolder(supabase: SupabaseClient, userId: string)
     return null;
 }
 
+export const currentPlaylistFolder: IFolder = { id: 'CURRENT_PLAYLIST', name: 'Current Playlist' };
+
 export async function listFolders(supabase: SupabaseClient, userId: string): Promise<IFolder[]> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
-    const folders: IFolder[] = [];
+    const folders: IFolder[] = [currentPlaylistFolder];
     if (googleDriveAccessToken) {
         const defaultFolder = await getDefaultFolder(supabase, userId);
         if (defaultFolder) {
