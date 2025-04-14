@@ -2,7 +2,7 @@ import { IFile } from "@/types/file";
 import { IFolder } from "@/types/folder";
 import { GoogleDrivePage } from "@/types/google-drive";
 import { SupabaseClient } from "@supabase/supabase-js";
-import { getCachedGoogleDriveToken } from "./cache";
+import { getCachedDriveFiles, getCachedGoogleDriveToken } from "./cache";
 import { getFileDirectLink, getOrCreateFolder, listFilesInFolder, listFoldersInFolder, uploadToGoogleDrive } from "./googleDrive";
 import { streamFromDriveToSupabase } from "./stream";
 
@@ -23,7 +23,8 @@ export async function uploadAudio(supabase: SupabaseClient, file: File, userId: 
 export async function listAudioFiles(supabase: SupabaseClient, userId: string, options: {folderId?: string, pageToken?: string, filterQuery?: string}): Promise<GoogleDrivePage |{files: IFile[]} | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
-        return listFilesInFolder(googleDriveAccessToken, options);
+        // return listFilesInFolder(googleDriveAccessToken, options);
+        return getCachedDriveFiles(userId, googleDriveAccessToken, options);
     } else {
         const path = `${userId}/` + (options.folderId ? `${options.folderId}/` : '');
         const { data, error } = await supabase.storage

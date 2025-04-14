@@ -6,12 +6,30 @@ import { createClient } from '@/utils/supabase/client';
 import { getDlUrl } from '@/utils/useUploader';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import { AudioLinesIcon, Download, EditIcon, EllipsisVertical, ListPlusIcon, Loader2, Pause, Play, PlusSquareIcon, Trash2 } from 'lucide-react';
+import {
+  AudioLinesIcon,
+  Download,
+  EditIcon,
+  EllipsisVertical,
+  ListPlusIcon,
+  Loader2,
+  Pause,
+  Play,
+  PlusSquareIcon,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 interface FileListProps {
@@ -22,33 +40,44 @@ interface FileListProps {
   fetchMore: () => void;
   isFetchingMore: boolean;
   hasMore: boolean;
+  isLoadingFiles: boolean;
 }
 
-export default function FileList({ files, onSearch, streamizableFile, fetchMore, isFetchingMore, hasMore }: FileListProps) {
+export default function FileList({
+  files,
+  onSearch,
+  streamizableFile,
+  fetchMore,
+  isFetchingMore,
+  hasMore,
+  isLoadingFiles,
+}: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
   const [fileToEdit, setFileToEdit] = useState<IFile | null>(null);
   const [query, setQuery] = useState('');
-    // Debounced search function
-    const debouncedSearch = useCallback(
-      debounce((value: string) => {
-        onSearch(value);
-      }, 300),
-      []
-    );
-  
-    const handleChange = (e: any) => {
-      const value = e.target.value;
-      setQuery(value);
-      debouncedSearch(value);
-    };
-    
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((value: string) => {
+      onSearch(value);
+    }, 300),
+    []
+  );
+
+  const handleChange = (e: any) => {
+    const value = e.target.value;
+    setQuery(value);
+    debouncedSearch(value);
+  };
+
   const { currentFile, play, pause, isPlaying } = usePlayer();
 
   const handlePlay = async (file: IFile) => {
     try {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Not authenticated');
         return;
@@ -65,11 +94,12 @@ export default function FileList({ files, onSearch, streamizableFile, fetchMore,
     }
   };
 
-
   const handleDownload = async (file: IFile) => {
     try {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Not authenticated');
         return;
@@ -101,33 +131,34 @@ export default function FileList({ files, onSearch, streamizableFile, fetchMore,
 
     try {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Not authenticated');
         return;
       }
 
-    
-    // TODO
-
+      // TODO
     } catch (error) {
       toast.error('Error deleting file');
     } finally {
       setFileToEdit(null);
     }
-  }
+  };
 
   const confirmDelete = (file: IFile) => {
     setFileToDelete(file);
   };
-
 
   const handleDelete = async () => {
     if (!fileToDelete) return;
 
     try {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Not authenticated');
         return;
@@ -157,135 +188,157 @@ export default function FileList({ files, onSearch, streamizableFile, fetchMore,
       <Card>
         <CardHeader>
           <CardTitle>Your Audio Files</CardTitle>
-          <CardDescription>
-            <div className="flex gap-2 sm:gap-4 items-center justify-center">
-              <Button className='gap-2' size="lg" >
-                <AudioLinesIcon className="sm:h-4 sm:w-4 h-3 w-3" />
-                <span>Current playlist</span>
-              </Button>
-              <input
-                type="text"
-                value={query}
-                onChange={handleChange}
-                placeholder="Search..."
-                className="border rounded px-3 py-2 w-full max-w-sm"
-              />
-            </div>
+          <CardDescription className="flex items-center justify-center gap-1 sm:gap-4">
+            <Button className="gap-1 px-2 sm:gap-2 sm:px-4" size="default">
+              <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="text-xs sm:text-sm">Current playlist</span>
+            </Button>
+            <input
+              type="text"
+              value={query}
+              onChange={handleChange}
+              placeholder="Search..."
+              className="w-full max-w-sm rounded border px-3 py-2"
+            />
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-1 sm:gap-2 justify-center items-center">
-            {files.map((file, index) => {
-              const isPlayingFile = currentFile?.id === file.id && isPlaying;
-              const isFileLoading = isLoading || file?.loading
-              const streamable = Boolean(file.url);
-              // console.log('file', file, isLoading, file?.loading, isFileLoading);
-              return (
-                <div
-                  key={`${file.name}-${index}`}
-                  className={classNames("flex flex-col sm:p-2 p-1 border rounded-lg sm:text-sm text-xs transition-colors w-[500px] max-w-full", {
-                    // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
-                    // 'animate-pulse': isPlayingFile,
-                    // 'hover:bg-muted/50': !isPlayingFile,
-                    'dark:bg-indigo-900/30 bg-indigo-200/30': streamable
-                  })}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="line-clamp-1 text-ellipsis">{file.name}</span>
-                    <div className="flex items-center gap-1">
-                      {streamable  ? isPlayingFile ? (<Button
-                        variant="outlineSecondary"
-                        size="xs"
-                        // className='bg-lime-400'
-                        onClick={() => isPlaying ? pause() : play(file)}
-                        disabled={isFileLoading}
-                      >
-                        {isFileLoading ? (
-                          <Loader2 className="sm:h-4 sm:w-4 h-3 w-3 animate-spin" />
-                        ) : isPlaying ? (
-                          <Pause className="sm:h-4 sm:w-4 h-3 w-3" />
-                        ) : (
-                          <Play className="sm:h-4 sm:w-4 h-3 w-3" />
-                        )}
-                      </Button>) : <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => handlePlay(file)}
-                        disabled={isFileLoading || !file.url}
-                      >
-                        {isFileLoading ? (
-                          <Loader2 className="sm:h-4 sm:w-4 h-3 w-3 animate-spin" />
-                        ) : (
-                          <Play className="sm:h-4 sm:w-4 h-3 w-3" />
-                        )}
-                      </Button> :   <Button
-                          variant="outline"
-                          size="xs"
-                          disabled={isFileLoading}
-                          onClick={() => streamizableFile(file)}
-                        >
-                          <ListPlusIcon className="sm:h-4 sm:w-4 h-3 w-3" />
-                        </Button>
-                      }
+        <CardContent className="min-h-[60vh]">
+          {/* {isLoadingFiles ? () :  */}
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size={"xs"}>
-                            <EllipsisVertical className="sm:h-4 sm:w-4 h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-content" align="start">
-                          <div className='flex flex-col gap-1'>
-                          <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownload(file)}
-                            >
-                              <Download className="sm:h-4 sm:w-4 h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => edit(file)}
-                            >
-                              <EditIcon className="sm:h-4 sm:w-4 h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => confirmDelete(file)}
-                            >
-                              <Trash2 className="sm:h-4 sm:w-4 h-3 w-3" />
-                            </Button>
-                          </div>
-
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-
-            {files.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">No files uploaded yet</p>
-                <p className="text-sm text-muted-foreground mt-2">Upload audio files to get started</p>
+          {isLoadingFiles ? (
+            <div>
+              <div className="flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin sm:h-8 sm:w-8" />
               </div>
-            )}
+              <p className="mt-2 text-center text-muted-foreground">Loading files...</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-2">
+                {files.map((file, index) => {
+                  const isPlayingFile = currentFile?.id === file.id && isPlaying;
+                  const isFileLoading = isLoading || file?.loading;
+                  const streamable = Boolean(file.url);
+                  // console.log('file', file, isLoading, file?.loading, isFileLoading);
+                  return (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className={classNames(
+                        'flex w-[500px] max-w-full flex-col rounded-lg border p-1 text-xs transition-colors sm:p-2 sm:text-sm',
+                        {
+                          // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
+                          // 'animate-pulse': isPlayingFile,
+                          // 'hover:bg-muted/50': !isPlayingFile,
+                          'bg-indigo-200/30 dark:bg-indigo-900/30': streamable,
+                        }
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="line-clamp-1 text-ellipsis">{file.name}</span>
+                        <div className="flex items-center gap-1">
+                          {streamable ? (
+                            isPlayingFile ? (
+                              <Button
+                                variant="outlineSecondary"
+                                size="xs"
+                                // className='bg-lime-400'
+                                onClick={() => (isPlaying ? pause() : play(file))}
+                                disabled={isFileLoading}
+                              >
+                                {isFileLoading ? (
+                                  <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
+                                ) : isPlaying ? (
+                                  <Pause className="h-3 w-3 sm:h-4 sm:w-4" />
+                                ) : (
+                                  <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => handlePlay(file)}
+                                disabled={isFileLoading || !file.url}
+                              >
+                                {isFileLoading ? (
+                                  <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
+                                ) : (
+                                  <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
+                              </Button>
+                            )
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              disabled={isFileLoading}
+                              onClick={() => streamizableFile(file)}
+                            >
+                              <ListPlusIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                          )}
 
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size={'xs'}>
+                                <EllipsisVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-content" align="start">
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownload(file)}
+                                >
+                                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => edit(file)}>
+                                  <EditIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => confirmDelete(file)}
+                                >
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
 
-          </div>
-          {hasMore && <div className='flex justify-center items-center mt-4'>
-          <Button onClick={fetchMore} disabled={isFetchingMore}>{
-          isFetchingMore ? <Loader2 className="sm:h-4 sm:w-4 h-3 w-3 animate-spin" /> : <span>More</span>}</Button>
-          </div>}
-
+                {files.length === 0 && (
+                  <div className="py-8 text-center">
+                    <p className="text-muted-foreground">No files uploaded yet</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Upload audio files to get started
+                    </p>
+                  </div>
+                )}
+              </div>
+              {hasMore && (
+                <div className="mt-4 flex items-center justify-center">
+                  <Button onClick={fetchMore} disabled={isFetchingMore}>
+                    {isFetchingMore ? (
+                      <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
+                    ) : (
+                      <span>More</span>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
-      </Card >
+      </Card>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+      <Dialog open={!!fileToDelete} onOpenChange={open => !open && setFileToDelete(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
@@ -304,7 +357,7 @@ export default function FileList({ files, onSearch, streamizableFile, fetchMore,
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!fileToEdit} onOpenChange={(open) => !open && setFileToEdit(null)}>
+      <Dialog open={!!fileToEdit} onOpenChange={open => !open && setFileToEdit(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Filename edition</DialogTitle>
@@ -321,7 +374,7 @@ export default function FileList({ files, onSearch, streamizableFile, fetchMore,
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
     </>
   );
-} 
+}

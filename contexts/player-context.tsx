@@ -81,7 +81,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Check if the file is already in the queue
     const isFileInQueue = queue.some((f) => f.id === file.id);
     if (isFileInQueue) {
-      console.log('File is already in the queue:', file);
+      // console.log('File is already in the queue:', file);
       return;
     }
     // if (queue.length === 0) {

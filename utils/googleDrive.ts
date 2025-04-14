@@ -24,31 +24,31 @@ export async function uploadToGoogleDrive(accessToken: string, file: File, folde
       body: formData,
     });
 
-    const fileData = await res.json();
+    // const fileData = await res.json();
 
     // Rendre le fichier public après l'upload
-    await makeFilePublic(accessToken, fileData.id);
+    // await makeFilePublic(accessToken, fileData.id);
   } catch (error) {
     console.error('Error uploading to Google Drive:', error);
     return error;
   }
 }
 
-export async function makeFilePublic(accessToken: string, fileId: string) {
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      role: 'reader', // Rôle en lecture seule
-      type: 'anyone', // Permet à n'importe qui d'y accéder
-    }),
-  });
+// export async function makeFilePublic(accessToken: string, fileId: string) {
+//   const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+//     method: 'POST',
+//     headers: {
+//       Authorization: `Bearer ${accessToken}`,
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({
+//       role: 'reader', // Rôle en lecture seule
+//       type: 'anyone', // Permet à n'importe qui d'y accéder
+//     }),
+//   });
 
-  return res.json();
-}
+//   return res.json();
+// }
 
 //   export async function getFileShareableLink(accessToken: string, fileId: string) {
 //     const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,webViewLink`, {

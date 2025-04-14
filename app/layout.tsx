@@ -45,7 +45,10 @@ export default function RootLayout({
                 <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                   <div className="w-full  flex justify-between items-center sm:p-3 sm:px-5 p-2 text-sm">
                     <div className="flex gap-5 items-center font-semibold">
-                      <Link href={"/"}>TibeeMusic</Link>
+                      <Link href={"/"} className="flex items-center gap-1 sm:gap-2">
+                      <img src="logo.png" className="sm:w-12 sm:h-12 w-10 h-10"/>
+                      <span className="sm:text-lg">TibeeMusic</span>
+                      </Link>
                     </div>
 
                     <div className="flex gap-2 items-center">
