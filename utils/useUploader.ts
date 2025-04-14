@@ -1,9 +1,10 @@
 import { IFile } from "@/types/file";
 import { IFolder } from "@/types/folder";
+import { GoogleDrivePage } from "@/types/google-drive";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { getCachedGoogleDriveToken } from "./cache";
 import { getFileDirectLink, getOrCreateFolder, listFilesInFolder, listFoldersInFolder, uploadToGoogleDrive } from "./googleDrive";
 import { streamFromDriveToSupabase } from "./stream";
-import { getCachedGoogleDriveToken } from "./cache";
 
 export async function uploadAudio(supabase: SupabaseClient, file: File, userId: string) {
     //TODO : check quota
@@ -19,20 +20,20 @@ export async function uploadAudio(supabase: SupabaseClient, file: File, userId: 
     }
 }
 
-export async function listAudioFiles(supabase: SupabaseClient, userId: string, folderId?: string): Promise<IFile[] | null> {
+export async function listAudioFiles(supabase: SupabaseClient, userId: string, options: {folderId?: string, pageToken?: string, filterQuery?: string}): Promise<GoogleDrivePage |{files: IFile[]} | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
-        return listFilesInFolder(googleDriveAccessToken, folderId);
+        return listFilesInFolder(googleDriveAccessToken, options);
     } else {
-        const path = `${userId}/` + (folderId ? `${folderId}/` : '');
+        const path = `${userId}/` + (options.folderId ? `${options.folderId}/` : '');
         const { data, error } = await supabase.storage
             .from('audio')
-            .list(path, { limit: 100 });
+            .list(path, { limit: 60 });
         if (error) {
             console.error('Error listing files:', error);
             return null;
         }
-        return data;
+        return {files: data};
     }
 
 }

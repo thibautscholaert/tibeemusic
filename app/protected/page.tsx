@@ -13,7 +13,7 @@ import { createClient } from '@/utils/supabase/client';
 import { getAudioUrl, listAudioFiles, listFolders } from '@/utils/useUploader';
 import { LinkIcon, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function AudioPage() {
   const router = useRouter();
@@ -21,7 +21,10 @@ export default function AudioPage() {
   const [folder, setFolder] = useState<IFolder | null>(null);
   const [folders, setFolders] = useState<IFolder[]>([]);
   const [files, setFiles] = useState<IFile[]>([]);
+  const [nextPageToken, setNextPageToken] = useState<string>();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
   const { addToQueue } = usePlayer();
 
   useEffect(() => {
@@ -29,6 +32,10 @@ export default function AudioPage() {
     fetchFiles();
     fetchFolders();
   }, []);
+
+  useEffect(() => {
+    fetchFiles();
+  }, [filterQuery, folder]);
 
   const checkGoogleDriveConnected = async () => {
     const supabase = createClient();
@@ -40,18 +47,68 @@ export default function AudioPage() {
     }
   }
 
-  const fetchFiles = async (folder?: IFolder) => {
+  const fetchMore = async () => {
+    if(isFetchingMore) return;
+    setIsFetchingMore(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const data = await listAudioFiles(supabase, session.user.id, {folderId: folder?.id, pageToken: nextPageToken});
+      if (data) {
+        console.log('files', data);
+        const newFiles = data.files;
+        if('nextPageToken' in data && data.nextPageToken) {
+          setNextPageToken(data.nextPageToken);
+        }
+        setFiles([...files, ...newFiles]);
+        for (const file of newFiles) {
+          if (file.id) {
+            getAudioUrl(supabase, session.user.id, file.id, file.name, false).then((url) => {
+              if (url) {
+                file.url = url;
+                setFiles((prevFiles) => {
+                  const updatedFiles = [...prevFiles];
+                  const index = updatedFiles.findIndex(f => f.id === file.id);
+                  if (index !== -1) {
+                    updatedFiles[index] = { ...updatedFiles[index], url };
+                  }
+                  return updatedFiles;
+                });
+                addToQueue(file);
+              }
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching files:', error);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
+
+  const hasMore = useMemo(() => {
+    return nextPageToken !== undefined && nextPageToken !== null && nextPageToken !== '';
+  }, [nextPageToken])
+
+  const fetchFiles = async () => {
     console.log('fetching files', folder);
     try {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const data = await listAudioFiles(supabase, session.user.id, folder?.id);
+      const data = await listAudioFiles(supabase, session.user.id, {folderId: folder?.id, filterQuery});
       if (data) {
         console.log('files', data);
-        setFiles(data);
-        for (const file of data) {
+        const files = data.files;
+        if('nextPageToken' in data && data.nextPageToken) {
+          setNextPageToken(data.nextPageToken);
+        }
+        setFiles(files);
+        for (const file of files) {
           if (file.id) {
             getAudioUrl(supabase, session.user.id, file.id, file.name, false).then((url) => {
               if (url) {
@@ -74,6 +131,10 @@ export default function AudioPage() {
       console.error('Error fetching files:', error);
     }
   };
+
+  const onSearch = (query: string) => {
+    setFilterQuery(query);
+  }
 
   const streamizableFile = async (file: IFile) => {
     file.loading = true;
@@ -154,9 +215,19 @@ export default function AudioPage() {
 
       <FolderList current={folder} folders={folders} onFolderChange={(folder: IFolder) => {
         setFolder(folder);
-        fetchFiles(folder);
       }} />
-      <FileList files={files} onFilesChange={fetchFiles} streamizableFile={streamizableFile} />
+
+
+
+      <FileList 
+      files={files} 
+      onSearch={onSearch}
+      onFilesChange={fetchFiles}
+      fetchMore={fetchMore} 
+      hasMore={hasMore}
+       isFetchingMore={isFetchingMore} 
+       streamizableFile={streamizableFile} 
+       />
     </div>
   );
 } 

@@ -14,12 +14,11 @@ export default function FolderList({ folders, onFolderChange, current }: FolderL
   return (
     <>
       <Card>
-        <CardHeader>
+        {/* <CardHeader>
           <CardTitle>Your folders</CardTitle>
-          {/* <CardDescription>Play, download, or delete your audio files</CardDescription> */}
-        </CardHeader>
+        </CardHeader> */}
         <CardContent>
-          <div className="grid grid-flow-col auto-cols-max gap-1 sm:gap-2 overflow-x-auto p-2">
+          <div className="grid grid-flow-col auto-cols-max gap-1 sm:gap-2 overflow-x-auto px-2">
             {folders.map((folder, index) => {
               return <Button
                 key={`${folder.id}-${index}`}

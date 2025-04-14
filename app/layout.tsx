@@ -8,6 +8,7 @@ import Link from "next/link";
 import "./globals.css";
 import { PlayerProvider } from "@/contexts/player-context";
 import GlobalPlayerWrapper from "@/components/global-player-wrapper";
+import { Toaster } from "sonner";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -76,6 +77,7 @@ export default function RootLayout({
             </main>
           </PlayerProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

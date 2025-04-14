@@ -1,3 +1,8 @@
+export interface GoogleDrivePage {
+  files: GoogleDriveFile[];
+  nextPageToken?: string;
+}
+
 export interface GoogleDriveFile {
   id: string
   mimeType: string

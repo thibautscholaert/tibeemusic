@@ -199,7 +199,7 @@ export default function GlobalPlayer({
 
   return (
     <div className={`fixed bottom-0 left-0 right-0 bg-background border-t pb-1 sm:pb-4 px-1 sm:px-6 z-50 flex flex-col items-center justify-center transition-transform duration-300 ${hidden ? 'translate-y-[calc(100%-2rem)] sm:translate-y-[calc(100%-2.5rem)]' : 'translate-y-0'}`}>
-      <div className="mx-auto w-full max-w-2xl flex flex-col items-center justify-center space-y-4">
+      <div className="mx-auto w-full max-w-4xl flex flex-col items-center justify-center space-y-4">
         <div className="flex flex-col w-full sm:space-y-2 space-y-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1 sm:space-x-4">

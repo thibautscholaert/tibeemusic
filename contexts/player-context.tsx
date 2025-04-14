@@ -39,9 +39,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const next = () => {
     if (queue.length > 0) {
-      const nextFile = queue[queueIndex + 1];
-      setQueueIndex((prev) => prev + 1);
-      setCurrentFile(nextFile);
+      if(queue.length > queueIndex + 1) {
+        const nextFile = queue[queueIndex + 1];
+        setQueueIndex((prev) => prev + 1);
+        setCurrentFile(nextFile);
+      } else {
+        const nextFile = queue[0];
+        setQueueIndex(0);
+        setCurrentFile(nextFile);
+      }
     }
     //  else {
     //   setCurrentFile(null);
@@ -50,17 +56,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
 
   const hasNext = () => {
-    return queue.length > queueIndex + 1;
+    return true;
   };
 
   const hasPrevious = () => {
-    return queue.length > 0 && queueIndex > 0;
+    return true;
   };
 
   const previous = () => {
-    const nextFile = queue[queueIndex - 1];
-    setQueueIndex((prev) => prev - 1);
-    setCurrentFile(nextFile);
+    if(queue.length > 0 && queueIndex > 0){
+      const nextFile = queue[queueIndex - 1];
+      setQueueIndex((prev) => prev - 1);
+      setCurrentFile(nextFile);
+    } else {
+      const nextFile = queue[queue.length - 1];
+      setQueueIndex(queue.length - 1);
+      setCurrentFile(nextFile);
+    }
+  
   };
 
   const addToQueue = (file: IFile) => {

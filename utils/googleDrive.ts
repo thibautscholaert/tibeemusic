@@ -1,4 +1,4 @@
-import { GoogleDriveFile, GoogleDriveFileList } from "@/types/google-drive";
+import { GoogleDriveFile, GoogleDrivePage } from "@/types/google-drive";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 export async function uploadToGoogleDrive(accessToken: string, file: File, folderName?: string) {
@@ -104,10 +104,16 @@ export async function listFoldersInFolder(accessToken: string): Promise<GoogleDr
   return data.files; // Liste des dossiers avec leurs détails
 }
 
-export async function listFilesInFolder(accessToken: string, folderId?: string): Promise<GoogleDriveFile[]> {
+export async function listFilesInFolder(accessToken: string, options : {folderId?: string, pageToken?: string, filterQuery?: string}): Promise<GoogleDrivePage> {
+  let {folderId, pageToken, filterQuery} = options;
+  console.log('listFilesInFolder', folderId, pageToken, filterQuery);
   folderId = folderId || await getOrCreateFolder(accessToken, 'TibeeMusic');
-  const query = encodeURIComponent(`'${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink)`, {
+  let query = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'audio/' and trashed = false`);
+  if(filterQuery){
+    query += ` and name contains '${filterQuery}'`
+  }
+  const url =`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink,mimeType),nextPageToken&pageSize=96` + (pageToken ? `&pageToken=${pageToken}` : '');
+  const res = await fetch(url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -118,10 +124,8 @@ export async function listFilesInFolder(accessToken: string, folderId?: string):
   if (data.error) {
     throw new Error(data.error.message);
   }
-
   console.log('Files in folder:', data);
-
-  return data.files; // Liste des fichiers avec leurs détails
+  return data; // Liste des fichiers avec leurs détails
 }
 
 export async function getOrCreateFolder(accessToken: string, folderName: string): Promise<string> {
