@@ -10,7 +10,7 @@ import { IFile } from '@/types/file';
 import { IFolder } from '@/types/folder';
 import { getCachedGoogleDriveToken } from '@/utils/cache';
 import { createClient } from '@/utils/supabase/client';
-import { getAudioUrl, listAudioFiles, listFolders } from '@/utils/useUploader';
+import { currentPlaylistFolder, getAudioUrl, listAudioFiles, listFolders } from '@/utils/useUploader';
 import { LinkIcon, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -37,7 +37,10 @@ export default function AudioPage() {
   }, []);
 
   useEffect(() => {
-    fetchFiles();
+    console.log('folder changed', folder);
+    if (folder) {
+      fetchFiles();
+    }
   }, [filterQuery, folder]);
 
   const checkGoogleDriveConnected = async () => {
@@ -108,18 +111,23 @@ export default function AudioPage() {
   const fetchFiles = async () => {
     console.log('fetching files', folder);
     setIsLoadingFiles(true);
+    if (folder?.id === currentPlaylistFolder.id) {
+      if (filterQuery) {
+        const filteredFiles = queue.filter(file => file.name.toLowerCase().includes(filterQuery.toLowerCase()));
+        setFiles(filteredFiles);
+      } else {
+        setFiles(queue);
+      }
+      setIsLoadingFiles(false);
+      return;
+    }
+
     try {
       const supabase = createClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-
-      if (folder?.id === 'CURRENT_PLAYLIST') {
-        setFiles(queue);
-        setIsLoadingFiles(false);
-        return;
-      }
 
       const data = await listAudioFiles(supabase, session.user.id, {
         folderId: folder?.id,
@@ -267,6 +275,8 @@ export default function AudioPage() {
       // queueSelected={queueSelected}
       // selectCurrentPlaylist={selectCurrentPlaylist}
       />
+
+      <div className="my-2" />
 
       <FileList
         files={files}

@@ -3,7 +3,8 @@
 import { IFolder } from '@/types/folder';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { AudioLinesIcon } from 'lucide-react';
+import { AudioLinesIcon, FolderIcon } from 'lucide-react';
+import classNames from 'classnames';
 
 interface FolderListProps {
   current: IFolder | null;
@@ -29,7 +30,7 @@ export default function FolderList({
           <CardTitle>Your folders</CardTitle>
         </CardHeader> */}
         <CardContent>
-          <div className="grid auto-cols-max grid-flow-col gap-1 overflow-x-auto px-2 sm:gap-2">
+          <div className="grid auto-cols-max grid-flow-col gap-1 overflow-x-auto px-2 sm:gap-2 py-2">
             {/* <Button
               className="gap-1 px-2 sm:gap-2 sm:px-4"
               onClick={selectCurrentPlaylist}
@@ -45,6 +46,14 @@ export default function FolderList({
                   variant={current?.id === folder.id ? 'default' : 'outline'}
                   disabled={isLoadingFiles}
                 >
+                  {folder.id === 'STREAMABLE' ? (
+                    <AudioLinesIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 mr-2 shrink-0",
+                      `${current?.id === folder.id ? 'text-lime-600' : 'text-lime-400'}`)} />
+                  ) : folder.name === 'TibeeMusic' ?
+                    <FolderIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 mr-2 ")} />
+                    :
+                    <FolderIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 mr-2 ")} />
+                  }
                   {folder.name}
                 </Button>
               );

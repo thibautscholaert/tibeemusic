@@ -50,7 +50,7 @@ export async function getDefaultFolder(supabase: SupabaseClient, userId: string)
     return null;
 }
 
-export const currentPlaylistFolder: IFolder = { id: 'CURRENT_PLAYLIST', name: 'Current Playlist' };
+export const currentPlaylistFolder: IFolder = { id: 'STREAMABLE', name: 'Streamable files' };
 
 export async function listFolders(supabase: SupabaseClient, userId: string): Promise<IFolder[]> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);

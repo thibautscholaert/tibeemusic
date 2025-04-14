@@ -186,14 +186,14 @@ export default function FileList({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Your Audio Files</CardTitle>
-          <CardDescription className="flex items-center justify-center gap-1 sm:gap-4">
+          {/* <CardTitle>Your Audio Files</CardTitle> */}
+          <CardDescription className="flex items-center justify-center">
             <Input
               type="text"
               value={query}
               onChange={handleChange}
               placeholder="Search..."
-              className="w-full max-w-sm rounded border px-3 py-2"
+              className="w-full max-w-lg"
             />
           </CardDescription>
         </CardHeader>
@@ -234,9 +234,9 @@ export default function FileList({
                             'animate-pulse': isPlayingFile,
                           })} />
                         ) : (
-                          <div className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <AudioLinesIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-accent")} />
                         )}
-                        <span className="line-clamp-1 text-ellipsis">{file.name}</span>
+                        <span className="line-clamp-1 text-ellipsis flex-grow">{file.name}</span>
                         <div className="flex items-center gap-1">
                           {streamable ? (
                             isPlayingFile ? (
