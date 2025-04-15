@@ -24,19 +24,10 @@ import {
   getAudioUrl,
   listAudioFiles,
   listFolders,
+  streamify,
 } from '@/utils/useUploader';
 import classNames from 'classnames';
-import {
-  CheckCircle2Icon,
-  CircleCheckBigIcon,
-  Link2Icon,
-  LinkIcon,
-  Trash2Icon,
-  TrashIcon,
-  Unlink2Icon,
-  UnlinkIcon,
-  Upload,
-} from 'lucide-react';
+import { LinkIcon, UnlinkIcon, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -209,7 +200,7 @@ export default function AudioPage() {
     setFilterQuery(query);
   };
 
-  const streamizableFile = async (file: IFile) => {
+  const streamifyFile = async (file: IFile) => {
     file.loading = true;
     setFiles(prevFiles => {
       const updatedFiles = [...prevFiles];
@@ -224,7 +215,7 @@ export default function AudioPage() {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) return;
-    const url = await getAudioUrl(supabase, session.user.id, file.id, file.name);
+    const url = await streamify(supabase, session.user.id, file.id, file.name);
     if (url) {
       file.url = url;
       file.loading = false;
@@ -374,7 +365,7 @@ export default function AudioPage() {
         fetchMore={fetchMore}
         hasMore={hasMore}
         isFetchingMore={isFetchingMore}
-        streamizableFile={streamizableFile}
+        streamifyFile={streamifyFile}
         isLoadingFiles={isLoadingFiles}
       />
 

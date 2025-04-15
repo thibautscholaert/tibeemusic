@@ -88,9 +88,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     //   setQueueIndex(0);
     // }
 
-    clearAllTagsFromFile(null, file.id).then(() => {
-      updateTags(null, file.id, ['streamable']);
-    });
+    // clearAllTagsFromFile(null, file.id).then(() => {
+    //   updateTags(null, file.id, ['streamable']);
+    // });
 
     setQueue(prevQueue => [...prevQueue, file]);
   };

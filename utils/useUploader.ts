@@ -6,11 +6,10 @@ import { getCachedDriveFiles, getCachedGoogleDriveToken } from './cache';
 import {
     getFileDirectLink,
     getOrCreateFolder,
-    listFilesInFolder,
     listFoldersInFolder,
     uploadToGoogleDrive,
 } from './googleDrive';
-import { streamFromDriveToSupabase } from './stream';
+import { streamFromDriveToBunny, streamFromDriveToSupabase } from './stream';
 
 export async function uploadAudio(supabase: SupabaseClient, file: File, userId: string) {
     //TODO : check quota
@@ -101,6 +100,29 @@ export async function getAudioUrl(
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
         return streamFromDriveToSupabase(supabase, fileId, googleDriveAccessToken, streamify);
+        // return streamFromDriveToBunny(fileId, googleDriveAccessToken);
+        // const exists = await exsistsInBunny(fileId);
+        // if (exists) {
+        // return getBunnyUrl(filename);
+        // }
+    } else {
+        const { data } = supabase.storage.from('audio').getPublicUrl(`${userId}/${filename}`);
+        return data?.publicUrl;
+    }
+    // return null;
+}
+
+export async function streamify(
+    supabase: SupabaseClient,
+    userId: string,
+    fileId: string,
+    filename: string,
+    streamify = true
+) {
+    const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
+    if (googleDriveAccessToken) {
+        return streamFromDriveToSupabase(supabase, fileId, googleDriveAccessToken, streamify);
+        // return streamFromDriveToBunny(fileId, filename, googleDriveAccessToken);
     } else {
         const { data } = supabase.storage.from('audio').getPublicUrl(`${userId}/${filename}`);
         return data?.publicUrl;

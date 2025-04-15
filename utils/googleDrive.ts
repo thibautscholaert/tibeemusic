@@ -134,7 +134,7 @@ export async function listFilesInFolder(
     query += ` and appProperties has { key = 'tag_${tag}' and value='1' }`;
   }
   const url =
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink,mimeType,appProperties),nextPageToken&pageSize=96` +
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink,mimeType,appProperties),nextPageToken&pageSize=48` +
     (pageToken ? `&pageToken=${pageToken}` : '');
   const res = await fetch(url, {
     method: 'GET',

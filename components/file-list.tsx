@@ -35,7 +35,7 @@ interface FileListProps {
   files: IFile[];
   onFilesChange: () => void;
   onSearch: (value: string) => void;
-  streamizableFile: (file: IFile) => void;
+  streamifyFile: (file: IFile) => void;
   fetchMore: () => void;
   isFetchingMore: boolean;
   hasMore: boolean;
@@ -45,7 +45,7 @@ interface FileListProps {
 export default function FileList({
   files,
   onSearch,
-  streamizableFile,
+  streamifyFile,
   fetchMore,
   isFetchingMore,
   hasMore,
@@ -306,7 +306,7 @@ export default function FileList({
                               variant="outline"
                               size="xs"
                               disabled={isFileLoading}
-                              onClick={() => streamizableFile(file)}
+                              onClick={() => streamifyFile(file)}
                             >
                               <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
