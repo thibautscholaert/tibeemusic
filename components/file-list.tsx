@@ -228,7 +228,7 @@ export default function FileList({
         <CardContent className="min-h-[60vh]">
           {/* {isLoadingFiles ? () :  */}
 
-          {isLoadingFiles && files.length === 0 ? (
+          {isLoadingFiles && !isFetchingMore ? (
             <div>
               <div className="flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin sm:h-8 sm:w-8" />
