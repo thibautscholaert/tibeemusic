@@ -1,10 +1,16 @@
-import { IFile } from "@/types/file";
-import { IFolder } from "@/types/folder";
-import { GoogleDrivePage } from "@/types/google-drive";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { getCachedDriveFiles, getCachedGoogleDriveToken } from "./cache";
-import { getFileDirectLink, getOrCreateFolder, listFilesInFolder, listFoldersInFolder, uploadToGoogleDrive } from "./googleDrive";
-import { streamFromDriveToSupabase } from "./stream";
+import { IFile } from '@/types/file';
+import { IFolder } from '@/types/folder';
+import { GoogleDrivePage } from '@/types/google-drive';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { getCachedDriveFiles, getCachedGoogleDriveToken } from './cache';
+import {
+    getFileDirectLink,
+    getOrCreateFolder,
+    listFilesInFolder,
+    listFoldersInFolder,
+    uploadToGoogleDrive,
+} from './googleDrive';
+import { streamFromDriveToSupabase } from './stream';
 
 export async function uploadAudio(supabase: SupabaseClient, file: File, userId: string) {
     //TODO : check quota
@@ -20,37 +26,46 @@ export async function uploadAudio(supabase: SupabaseClient, file: File, userId: 
     }
 }
 
-export async function listAudioFiles(supabase: SupabaseClient, userId: string, options: { folderId?: string, pageToken?: string, filterQuery?: string }): Promise<GoogleDrivePage | { files: IFile[] } | null> {
+export async function listAudioFiles(
+    supabase: SupabaseClient,
+    userId: string,
+    options: { folderId?: string; pageToken?: string; filterQuery?: string }
+): Promise<GoogleDrivePage | { files: IFile[] } | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
         // return listFilesInFolder(googleDriveAccessToken, options);
         return getCachedDriveFiles(userId, googleDriveAccessToken, options);
     } else {
         const path = `${userId}/` + (options.folderId ? `${options.folderId}/` : '');
-        const { data, error } = await supabase.storage
-            .from('audio')
-            .list(path, { limit: 60 });
+        const { data, error } = await supabase.storage.from('audio').list(path, { limit: 60 });
         if (error) {
             console.error('Error listing files:', error);
             return null;
         }
         return { files: data };
     }
-
 }
 
 let defaultFolderId: string | null = null;
 
-export async function getDefaultFolder(supabase: SupabaseClient, userId: string): Promise<IFolder | null> {
+export async function getDefaultFolder(
+    supabase: SupabaseClient,
+    userId: string
+): Promise<IFolder | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
-        defaultFolderId = defaultFolderId ?? await getOrCreateFolder(googleDriveAccessToken, 'TibeeMusic');
-        return { id: defaultFolderId, name: 'TibeeMusic' };
+        defaultFolderId =
+            defaultFolderId ?? (await getOrCreateFolder(googleDriveAccessToken, 'TibeeMusic'));
+        return { id: defaultFolderId, name: 'TibeeMusic', type: 'folder' };
     }
     return null;
 }
 
-export const currentPlaylistFolder: IFolder = { id: 'STREAMABLE', name: 'Streamable files' };
+export const currentPlaylistFolder: IFolder = {
+    id: 'STREAMABLE',
+    name: 'Streamable',
+    type: 'playlist',
+};
 
 export async function listFolders(supabase: SupabaseClient, userId: string): Promise<IFolder[]> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
@@ -60,7 +75,15 @@ export async function listFolders(supabase: SupabaseClient, userId: string): Pro
         if (defaultFolder) {
             folders.push(defaultFolder);
         }
-        folders.push(...await listFoldersInFolder(googleDriveAccessToken));
+        folders.push(
+            ...(await listFoldersInFolder(googleDriveAccessToken)).map(
+                folder =>
+                    ({
+                        ...folder,
+                        type: 'folder',
+                    }) as IFolder
+            )
+        );
     } else {
         // TODO
     }
@@ -68,14 +91,18 @@ export async function listFolders(supabase: SupabaseClient, userId: string): Pro
     return folders;
 }
 
-export async function getAudioUrl(supabase: SupabaseClient, userId: string, fileId: string, filename: string, streamify = true) {
+export async function getAudioUrl(
+    supabase: SupabaseClient,
+    userId: string,
+    fileId: string,
+    filename: string,
+    streamify = true
+) {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
         return streamFromDriveToSupabase(supabase, fileId, googleDriveAccessToken, streamify);
     } else {
-        const { data } = supabase.storage
-            .from('audio')
-            .getPublicUrl(`${userId}/${filename}`);
+        const { data } = supabase.storage.from('audio').getPublicUrl(`${userId}/${filename}`);
         return data?.publicUrl;
     }
 }
@@ -85,9 +112,7 @@ export async function getDlUrl(supabase: SupabaseClient, userId: string, filenam
     if (googleDriveAccessToken) {
         return getFileDirectLink(googleDriveAccessToken, filename);
     } else {
-        const { data } = supabase.storage
-            .from('audio')
-            .getPublicUrl(`${userId}/${filename}`);
+        const { data } = supabase.storage.from('audio').getPublicUrl(`${userId}/${filename}`);
         return data?.publicUrl;
     }
 }

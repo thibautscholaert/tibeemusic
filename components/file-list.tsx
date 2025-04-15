@@ -14,12 +14,12 @@ import {
   Loader2,
   Pause,
   Play,
-  Trash2
+  Trash2,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from './ui/card';
 import {
   Dialog,
   DialogContent,
@@ -55,6 +55,34 @@ export default function FileList({
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
   const [fileToEdit, setFileToEdit] = useState<IFile | null>(null);
   const [query, setQuery] = useState('');
+
+  const observerRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+          fetchMore();
+        }
+      },
+      {
+        root: null, // viewport
+        rootMargin: '100px', // commence à charger quand l'élément est à 100px du bas
+        threshold: 0.5,
+      }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observer.unobserve(observerRef.current);
+      }
+    };
+  }, [hasMore, isFetchingMore, fetchMore, observerRef]);
+
   // Debounced search function
   const debouncedSearch = useCallback(
     debounce((value: string) => {
@@ -200,7 +228,7 @@ export default function FileList({
         <CardContent className="min-h-[60vh]">
           {/* {isLoadingFiles ? () :  */}
 
-          {isLoadingFiles ? (
+          {isLoadingFiles && files.length === 0 ? (
             <div>
               <div className="flex items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin sm:h-8 sm:w-8" />
@@ -230,13 +258,17 @@ export default function FileList({
                     >
                       <div className="flex items-center justify-between gap-2">
                         {streamable ? (
-                          <AudioLinesIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 text-lime-400 shrink-0", {
-                            'animate-pulse': isPlayingFile,
-                          })} />
+                          <AudioLinesIcon
+                            className={classNames('h-3 w-3 shrink-0 text-lime-400 sm:h-4 sm:w-4', {
+                              'animate-pulse': isPlayingFile,
+                            })}
+                          />
                         ) : (
-                          <AudioLinesIcon className={classNames("h-3 w-3 sm:h-4 sm:w-4 shrink-0 text-accent")} />
+                          <AudioLinesIcon
+                            className={classNames('h-3 w-3 shrink-0 text-accent sm:h-4 sm:w-4')}
+                          />
                         )}
-                        <span className="line-clamp-1 text-ellipsis flex-grow">{file.name}</span>
+                        <span className="line-clamp-1 flex-grow text-ellipsis">{file.name}</span>
                         <div className="flex items-center gap-1">
                           {streamable ? (
                             isPlayingFile ? (
@@ -323,15 +355,12 @@ export default function FileList({
                   </div>
                 )}
               </div>
+
               {hasMore && (
-                <div className="mt-4 flex items-center justify-center">
-                  <Button onClick={fetchMore} disabled={isFetchingMore}>
-                    {isFetchingMore ? (
-                      <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
-                    ) : (
-                      <span>More</span>
-                    )}
-                  </Button>
+                <div ref={observerRef} className="mt-4 flex h-8 w-full items-center justify-center">
+                  {isFetchingMore && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                 </div>
               )}
             </>

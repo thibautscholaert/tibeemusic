@@ -3,20 +3,44 @@
 import FileList from '@/components/file-list';
 import FileUpload from '@/components/file-upload';
 import FolderList from '@/components/folder-list';
+import PlayLists from '@/components/playlist-list';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { usePlayer } from '@/contexts/player-context';
 import { IFile } from '@/types/file';
 import { IFolder } from '@/types/folder';
-import { getCachedGoogleDriveToken } from '@/utils/cache';
+import { clearCache, getCachedGoogleDriveToken } from '@/utils/cache';
 import { createClient } from '@/utils/supabase/client';
-import { currentPlaylistFolder, getAudioUrl, listAudioFiles, listFolders } from '@/utils/useUploader';
-import { LinkIcon, Upload } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import {
+  currentPlaylistFolder,
+  getAudioUrl,
+  listAudioFiles,
+  listFolders,
+} from '@/utils/useUploader';
+import classNames from 'classnames';
+import {
+  CheckCircle2Icon,
+  CircleCheckBigIcon,
+  Link2Icon,
+  LinkIcon,
+  Trash2Icon,
+  TrashIcon,
+  Unlink2Icon,
+  UnlinkIcon,
+  Upload,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function AudioPage() {
-  const router = useRouter();
   const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
   const [folder, setFolder] = useState<IFolder | null>(null);
   const [folders, setFolders] = useState<IFolder[]>([]);
@@ -25,16 +49,23 @@ export default function AudioPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-  const [queueSelected, setQueueSelected] = useState(false);
+  const [googleDriveConnectedHover, setGoogleDriveConnectedHover] = useState(false);
+  const [unlinkDriveOpen, setUnlinkDriveOpen] = useState(false);
 
+  const queueSelected = useMemo(() => {
+    return folder?.id === currentPlaylistFolder.id;
+  }, [folder]);
   const [filterQuery, setFilterQuery] = useState('');
   const { addToQueue, queue } = usePlayer();
 
   useEffect(() => {
-    checkGoogleDriveConnected();
-    // fetchFiles();
-    fetchFolders();
+    init();
   }, []);
+
+  const init = () => {
+    checkGoogleDriveConnected();
+    fetchFolders();
+  };
 
   useEffect(() => {
     console.log('folder changed', folder);
@@ -44,6 +75,7 @@ export default function AudioPage() {
   }, [filterQuery, folder]);
 
   const checkGoogleDriveConnected = async () => {
+    setGoogleDriveConnected(false);
     const supabase = createClient();
     const {
       data: { session },
@@ -105,7 +137,12 @@ export default function AudioPage() {
   };
 
   const hasMore = useMemo(() => {
-    return queueSelected && nextPageToken !== undefined && nextPageToken !== null && nextPageToken !== '';
+    return (
+      !queueSelected &&
+      nextPageToken !== undefined &&
+      nextPageToken !== null &&
+      nextPageToken !== ''
+    );
   }, [nextPageToken, queueSelected]);
 
   const fetchFiles = async () => {
@@ -113,7 +150,9 @@ export default function AudioPage() {
     setIsLoadingFiles(true);
     if (folder?.id === currentPlaylistFolder.id) {
       if (filterQuery) {
-        const filteredFiles = queue.filter(file => file.name.toLowerCase().includes(filterQuery.toLowerCase()));
+        const filteredFiles = queue.filter(file =>
+          file.name.toLowerCase().includes(filterQuery.toLowerCase())
+        );
         setFiles(filteredFiles);
       } else {
         setFiles(queue);
@@ -225,28 +264,68 @@ export default function AudioPage() {
     setIsUploadModalOpen(false);
   };
 
-  const selectCurrentPlaylist = () => {
-    setQueueSelected(!queueSelected);
-    if (queueSelected) {
-      fetchFiles();
-    } else {
-      setFiles(queue);
+  const handleUnlinkDrive = async () => {
+    const supabase = createClient();
+
+    const sessionRes = await supabase.auth.getUser();
+    const user = sessionRes.data.user;
+
+    if (user) {
+      const { error } = await supabase.from('user_drive_tokens').delete().eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error deleting user_drive_tokens:', error);
+        toast.error('Failed to unlink Google Drive');
+      } else {
+        console.log('Tokens deleted successfully');
+        toast.success('Google Drive unlinked successfully');
+      }
     }
-  }
+    clearCache('g-drive-token');
+    init();
+    setUnlinkDriveOpen(false);
+  };
+
+  const connectGoogleDrive = async () => {
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI!,
+      response_type: 'code',
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: 'https://www.googleapis.com/auth/drive',
+    });
+
+    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  };
 
   return (
     <div className="mx-auto w-full py-4 sm:py-8">
-      {/* <UploadToDrive /> */}
       <div className="mb-4 flex items-center justify-between gap-3 px-1 sm:mb-6">
-        {/* <h1 className="sm:text-3xl text-xl font-bold">Audio Manager</h1> */}
         {googleDriveConnected ? (
-          <div className="flex items-center gap-2">
-            <img src="google_drive.png" alt="Google Drive" className="h-8 w-8" />
-            {/* <span>connected</span>
-          <CheckCircleIcon className="text-green-500 w-4 h-4" /> */}
-          </div>
+          <Button
+            className={classNames({
+              'bg-lime-600 dark:bg-lime-100': !googleDriveConnectedHover,
+              'bg-red-600 dark:bg-red-100': googleDriveConnectedHover,
+            })}
+            onMouseEnter={() => {
+              setGoogleDriveConnectedHover(true);
+            }}
+            onMouseLeave={() => {
+              setGoogleDriveConnectedHover(false);
+            }}
+            onClick={() => setUnlinkDriveOpen(true)}
+          >
+            <img src="google_drive.png" alt="Google Drive" className="h-6 w-6" />
+            <span className="ml-2 w-16">{googleDriveConnectedHover ? 'Unlink' : 'Linked'}</span>
+            {googleDriveConnectedHover ? (
+              <UnlinkIcon className="ml-2 h-5 w-5 text-red-200 dark:text-red-600" />
+            ) : (
+              <LinkIcon className="ml-2 h-5 w-5 text-lime-200 dark:text-lime-600" />
+            )}
+          </Button>
         ) : (
-          <Button onClick={() => router.push('/connect-google-drive')}>
+          <Button onClick={connectGoogleDrive}>
             <LinkIcon className="mr-2 h-4 w-4" />
             Connect Google Drive
           </Button>
@@ -267,13 +346,23 @@ export default function AudioPage() {
 
       <FolderList
         current={folder}
-        folders={folders}
+        folders={folders.filter(f => f.type === 'folder')}
         onFolderChange={(folder: IFolder) => {
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
-      // queueSelected={queueSelected}
-      // selectCurrentPlaylist={selectCurrentPlaylist}
+        googleDriveConnected={googleDriveConnected}
+      />
+
+      <div className="my-2" />
+
+      <PlayLists
+        current={folder}
+        playlists={folders.filter(f => f.type === 'playlist')}
+        onFolderChange={(folder: IFolder) => {
+          setFolder(folder);
+        }}
+        isLoadingFiles={isLoadingFiles}
       />
 
       <div className="my-2" />
@@ -287,8 +376,25 @@ export default function AudioPage() {
         isFetchingMore={isFetchingMore}
         streamizableFile={streamizableFile}
         isLoadingFiles={isLoadingFiles}
-
       />
+
+      {/* Unlink Google Confirmation Dialog */}
+      <Dialog open={unlinkDriveOpen} onOpenChange={open => !open && setUnlinkDriveOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Unlink Google Drive</DialogTitle>
+            <DialogDescription>Are you sure you want unlink Google Drive ?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnlinkDriveOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleUnlinkDrive}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

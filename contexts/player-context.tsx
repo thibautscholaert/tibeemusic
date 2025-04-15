@@ -1,6 +1,7 @@
 'use client';
 
 import { IFile } from '@/types/file';
+import { clearAllTagsFromFile, updateTags } from '@/utils/googleDrive';
 import { createContext, ReactNode, useContext, useState } from 'react';
 
 interface PlayerContextType {
@@ -28,7 +29,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const play = (file: IFile | null) => {
     setCurrentFile(file);
-    setQueueIndex(queue.findIndex((f) => f.id === file?.id));
+    setQueueIndex(queue.findIndex(f => f.id === file?.id));
     setPlaying(true);
   };
 
@@ -39,9 +40,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const next = () => {
     if (queue.length > 0) {
-      if(queue.length > queueIndex + 1) {
+      if (queue.length > queueIndex + 1) {
         const nextFile = queue[queueIndex + 1];
-        setQueueIndex((prev) => prev + 1);
+        setQueueIndex(prev => prev + 1);
         setCurrentFile(nextFile);
       } else {
         const nextFile = queue[0];
@@ -54,7 +55,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // }
   };
 
-
   const hasNext = () => {
     return true;
   };
@@ -64,22 +64,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const previous = () => {
-    if(queue.length > 0 && queueIndex > 0){
+    if (queue.length > 0 && queueIndex > 0) {
       const nextFile = queue[queueIndex - 1];
-      setQueueIndex((prev) => prev - 1);
+      setQueueIndex(prev => prev - 1);
       setCurrentFile(nextFile);
     } else {
       const nextFile = queue[queue.length - 1];
       setQueueIndex(queue.length - 1);
       setCurrentFile(nextFile);
     }
-  
   };
 
   const addToQueue = (file: IFile) => {
     console.log('Adding to queue:', file.id, file.name);
     // Check if the file is already in the queue
-    const isFileInQueue = queue.some((f) => f.id === file.id);
+    const isFileInQueue = queue.some(f => f.id === file.id);
     if (isFileInQueue) {
       // console.log('File is already in the queue:', file);
       return;
@@ -88,7 +87,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     //   setCurrentFile(file);
     //   setQueueIndex(0);
     // }
-    setQueue((prevQueue) => [...prevQueue, file]);
+
+    clearAllTagsFromFile(null, file.id).then(() => {
+      updateTags(null, file.id, ['streamable']);
+    });
+
+    setQueue(prevQueue => [...prevQueue, file]);
   };
 
   const clearQueue = () => {
@@ -124,4 +128,4 @@ export function usePlayer() {
     throw new Error('usePlayer must be used within a PlayerProvider');
   }
   return context;
-} 
+}
