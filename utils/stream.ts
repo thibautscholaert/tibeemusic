@@ -1,34 +1,55 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getCachedFileList } from './cache';
+import { cleanFilename } from './bunny';
+import { getCachedStreambleFiles } from './cache';
 import { getDriveFileBlob } from './googleDrive';
 import { uploadToSupabase } from './supabase/supabaseStorage';
-import { cleanFilename } from './bunny';
 
 export async function streamFromDriveToSupabase(
   supabase: SupabaseClient,
+  userId: string,
   fileId: string,
+  fileName: string,
   accessToken: string,
   streamify = true
 ): Promise<string | null> {
   // Vérifie si le fichier est déjà sur Supabase
-  const exists = await isFileStreamable(supabase, fileId);
+  const exists = await isFileStreamable(supabase, userId, fileId);
 
-  if (!exists) {
-    if (streamify) {
-      const blob = await getDriveFileBlob(fileId, accessToken);
-      await uploadToSupabase(supabase, fileId, blob);
-    } else {
-      return null;
-    }
+  const { publicUrl } = supabase.storage.from('temp-audio').getPublicUrl(fileId).data;
+
+  console.log('exists', exists, fileName);
+
+  if (exists) {
+    return publicUrl;
   }
 
-  const { data } = supabase.storage.from('temp-audio').getPublicUrl(fileId);
-  return data.publicUrl;
+  if (streamify) {
+    if (!exists) {
+      const blob = await getDriveFileBlob(fileId, accessToken);
+      await Promise.all([uploadToSupabase(supabase, fileId, blob)]);
+    }
+    await supabase.from('audio_file').upsert(
+      {
+        user_id: userId,
+        inserted_at: new Date(),
+        drive_id: fileId,
+        name: fileName,
+        url: publicUrl,
+      },
+      { onConflict: 'drive_id', ignoreDuplicates: true }
+    );
+  }
+
+  return publicUrl;
 }
 
-export async function isFileStreamable(supabase: SupabaseClient, fileId: string): Promise<boolean> {
-  const list = await getCachedFileList(supabase);
-  return list.some(f => f.name === fileId);
+export async function isFileStreamable(
+  supabase: SupabaseClient,
+  userId: string,
+  fileId: string
+): Promise<boolean> {
+  const list = await getCachedStreambleFiles(supabase, userId);
+  return list.some(f => f.drive_id === fileId);
 }
 
 export async function streamFromDriveToBunny(

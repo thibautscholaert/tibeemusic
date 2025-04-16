@@ -1,22 +1,27 @@
 'use client';
 
 import { usePlayer } from '@/contexts/player-context';
-import { IFile } from '@/types/file';
+import { IFile, ITag } from '@/types/file';
+import { updateTag } from '@/utils/googleDrive';
 import { createClient } from '@/utils/supabase/client';
 import { getDlUrl } from '@/utils/useUploader';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import {
   AudioLinesIcon,
+  CrossIcon,
   Download,
   EditIcon,
   EllipsisVertical,
+  ListCheckIcon,
+  ListVideoIcon,
   Loader2,
   Pause,
   Play,
   Trash2,
+  XIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader } from './ui/card';
@@ -30,9 +35,11 @@ import {
 } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
+import { IFolder } from '@/types/folder';
 
 interface FileListProps {
   files: IFile[];
+  folder: IFolder | null;
   onFilesChange: () => void;
   onSearch: (value: string) => void;
   streamifyFile: (file: IFile) => void;
@@ -40,21 +47,36 @@ interface FileListProps {
   isFetchingMore: boolean;
   hasMore: boolean;
   isLoadingFiles: boolean;
+  streamableFiles: IFile[];
+  playlists: IFolder[];
+  onFileChange: (file: IFile) => Promise<void>;
+  loadPlaylist: () => Promise<void>;
 }
 
 export default function FileList({
   files,
+  folder,
   onSearch,
   streamifyFile,
   fetchMore,
   isFetchingMore,
   hasMore,
   isLoadingFiles,
+  streamableFiles,
+  playlists,
+  onFileChange,
+  loadPlaylist,
 }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
   const [fileToEdit, setFileToEdit] = useState<IFile | null>(null);
   const [query, setQuery] = useState('');
+  const [isUpdatingTag, setIsUpdatingTag] = useState(false);
+  const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
+
+  const fullyLoaded = useMemo(() => {
+    return files.every(file => Boolean(file.url) && streamableFiles.some(f => f.id === file.id));
+  }, [files, streamableFiles]);
 
   const observerRef = useRef(null);
 
@@ -210,19 +232,64 @@ export default function FileList({
     }
   };
 
+  const handleUpdateTag = async (file: IFile, tag: ITag) => {
+    setIsUpdatingTag(true);
+    console.log('updateTag', file, tag);
+    await updateTag(null, file.id, { key: tag.key, value: !tag.value });
+    await onFileChange(file);
+    setIsUpdatingTag(false);
+  };
+
+  const handleLoadPlaylist = async () => {
+    setIsLoadingPlaylist(true);
+    await loadPlaylist();
+    setIsLoadingPlaylist(false);
+  };
+
   return (
     <>
       <Card>
         <CardHeader>
           {/* <CardTitle>Your Audio Files</CardTitle> */}
           <CardDescription className="flex items-center justify-center">
-            <Input
-              type="text"
-              value={query}
-              onChange={handleChange}
-              placeholder="Search..."
-              className="w-full max-w-lg"
-            />
+            <div className="relative w-full max-w-lg">
+              <Input
+                type="text"
+                value={query}
+                onChange={handleChange}
+                placeholder="Search..."
+                className=""
+              />
+              {query.length > 0 && (
+                <button
+                  className="absolute right-0.5 top-1/2 -translate-y-1/2 rounded-md"
+                  onClick={() => {
+                    setQuery('');
+                    onSearch('');
+                  }}
+                >
+                  <XIcon className="h-4 w-4 sm:h-6 sm:w-6" />
+                </button>
+              )}
+            </div>
+
+            {folder?.type === 'playlist' && (
+              <Button
+                // variant={fullyLoaded ? 'outline' : 'default'}
+                className={classNames('ml-2 gap-2', {
+                  'bg-lime-300': fullyLoaded,
+                })}
+                onClick={handleLoadPlaylist}
+                disabled={isLoadingPlaylist}
+              >
+                {isLoadingPlaylist ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <AudioLinesIcon className="h-4 w-4" />
+                )}
+                <span>Stream</span>
+              </Button>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[60vh]">
@@ -241,22 +308,16 @@ export default function FileList({
                 {files.map((file, index) => {
                   const isPlayingFile = currentFile?.id === file.id && isPlaying;
                   const isFileLoading = isLoading || file?.loading;
-                  const streamable = Boolean(file.url);
-                  // console.log('file', file, isLoading, file?.loading, isFileLoading);
+                  const streamable =
+                    Boolean(file.url) && streamableFiles.some(f => f.id === file.id);
                   return (
                     <div
                       key={`${file.name}-${index}`}
                       className={classNames(
-                        'flex w-[500px] max-w-full flex-col rounded-lg border p-1 text-xs transition-colors sm:p-2 sm:text-sm',
-                        {
-                          // 'bg-lime-400/50 hover:bg-lime-600/80': isPlayingFile,
-                          // 'animate-pulse': isPlayingFile,
-                          // 'hover:bg-muted/50': !isPlayingFile,
-                          // 'bg-green-200/30 dark:bg-green-600/30': streamable,
-                        }
+                        'flex w-[500px] max-w-full flex-col gap-1 rounded-lg border p-1 text-xs transition-colors sm:p-2 sm:text-sm'
                       )}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-2 px-2">
                         {streamable ? (
                           <AudioLinesIcon
                             className={classNames('h-3 w-3 shrink-0 text-lime-400 sm:h-4 sm:w-4', {
@@ -268,7 +329,61 @@ export default function FileList({
                             className={classNames('h-3 w-3 shrink-0 text-accent sm:h-4 sm:w-4')}
                           />
                         )}
-                        <span className="line-clamp-1 flex-grow text-ellipsis">{file.name}</span>
+                        <div className="max-w-full flex-grow overflow-x-auto">
+                          {playlists &&
+                            playlists.map(playlist => {
+                              const key = playlist.name;
+                              const tag = file.tags?.find(t => t.key === key) || {
+                                key,
+                                value: false,
+                              };
+                              // console.log('playlist', playlist, file, key, tag);
+                              return (
+                                <Button
+                                  onClick={() => handleUpdateTag(file, tag)}
+                                  disabled={isUpdatingTag}
+                                  variant="outline"
+                                  size="xs"
+                                  key={tag.key}
+                                  className={tag.value ? 'text-lime-400' : 'text-muted-foreground'}
+                                >
+                                  {playlist.name}
+                                </Button>
+                              );
+                            })}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size={'xs'}>
+                                <EllipsisVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-content" align="start">
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDownload(file)}
+                                >
+                                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => edit(file)}>
+                                  <EditIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => confirmDelete(file)}
+                                >
+                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </div>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1">
                           {streamable ? (
                             isPlayingFile ? (
@@ -311,36 +426,8 @@ export default function FileList({
                               <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
                           )}
-
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size={'xs'}>
-                                <EllipsisVertical className="h-3 w-3 sm:h-4 sm:w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-content" align="start">
-                              <div className="flex flex-col gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDownload(file)}
-                                >
-                                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => edit(file)}>
-                                  <EditIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => confirmDelete(file)}
-                                >
-                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                                </Button>
-                              </div>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </div>
+                        <span className="line-clamp-1 flex-grow text-ellipsis">{file.name}</span>
                       </div>
                     </div>
                   );

@@ -2,10 +2,9 @@
 
 import { IFolder } from '@/types/folder';
 import classNames from 'classnames';
-import { AudioLinesIcon, FolderIcon, ListPlusIcon, PlusCircleIcon } from 'lucide-react';
+import { AudioLinesIcon, ListPlusIcon } from 'lucide-react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
+import { Card, CardContent } from './ui/card';
 
 interface FolderListProps {
   current: IFolder | null;

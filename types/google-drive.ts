@@ -8,6 +8,7 @@ export interface GoogleDriveFile {
   mimeType: string
   name: string
   url: string
+  appProperties: Record<string, string>
   webViewLink: string
 }
 

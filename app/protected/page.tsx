@@ -18,12 +18,15 @@ import { usePlayer } from '@/contexts/player-context';
 import { IFile } from '@/types/file';
 import { IFolder } from '@/types/folder';
 import { clearCache, getCachedGoogleDriveToken } from '@/utils/cache';
+import { getFile } from '@/utils/googleDrive';
 import { createClient } from '@/utils/supabase/client';
 import {
-  currentPlaylistFolder,
   getAudioUrl,
+  getDefaultFolder,
   listAudioFiles,
   listFolders,
+  listSupaAudioFiles,
+  streamablePlaylist,
   streamify,
 } from '@/utils/useUploader';
 import classNames from 'classnames';
@@ -42,12 +45,17 @@ export default function AudioPage() {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [googleDriveConnectedHover, setGoogleDriveConnectedHover] = useState(false);
   const [unlinkDriveOpen, setUnlinkDriveOpen] = useState(false);
+  const [streamableFiles, setStreamableFiles] = useState<IFile[]>([]);
+
+  const playlists = useMemo(() => {
+    return folders.filter(f => f.type === 'playlist');
+  }, [folders]);
 
   const queueSelected = useMemo(() => {
-    return folder?.id === currentPlaylistFolder.id;
+    return folder?.id === streamablePlaylist.id;
   }, [folder]);
   const [filterQuery, setFilterQuery] = useState('');
-  const { addToQueue, queue } = usePlayer();
+  const { addToQueue, play, isPlaying } = usePlayer();
 
   useEffect(() => {
     init();
@@ -56,10 +64,11 @@ export default function AudioPage() {
   const init = () => {
     checkGoogleDriveConnected();
     fetchFolders();
+    fetchStreamableFiles();
   };
 
   useEffect(() => {
-    console.log('folder changed', folder);
+    console.log('folder or filterQuery changed', folder, filterQuery);
     if (folder) {
       fetchFiles();
     }
@@ -78,7 +87,25 @@ export default function AudioPage() {
     }
   };
 
+  const fetchStreamableFiles = async () => {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await listSupaAudioFiles(supabase, session.user.id);
+    const files =
+      data?.map(f => ({
+        ...f,
+        id: f.drive_id,
+        url: f.url,
+      })) || [];
+    setStreamableFiles(files);
+  };
+
   const fetchMore = async () => {
+    if (!folder) return;
     if (isFetchingMore) return;
     setIsLoadingFiles(true);
     setIsFetchingMore(true);
@@ -90,9 +117,12 @@ export default function AudioPage() {
       if (!session) return;
 
       const data = await listAudioFiles(supabase, session.user.id, {
-        folderId: folder?.id,
+        folderId: folder.type === 'playlist' ? undefined : folder.id,
+        filterQuery,
+        tag: folder.type === 'playlist' ? folder.name : undefined,
         pageToken: nextPageToken,
       });
+      setNextPageToken(undefined);
       if (data) {
         console.log('files', data);
         const newFiles = data.files;
@@ -102,7 +132,7 @@ export default function AudioPage() {
         setFiles([...files, ...newFiles]);
         for (const file of newFiles) {
           if (file.id) {
-            getAudioUrl(supabase, session.user.id, file.id, file.name, false).then(url => {
+            getAudioUrl(supabase, session.user.id, file.id, file.name).then(url => {
               if (url) {
                 file.url = url;
                 setFiles(prevFiles => {
@@ -113,7 +143,6 @@ export default function AudioPage() {
                   }
                   return updatedFiles;
                 });
-                addToQueue(file);
               }
             });
           }
@@ -129,6 +158,7 @@ export default function AudioPage() {
 
   const hasMore = useMemo(() => {
     return (
+      files.length > 0 &&
       !queueSelected &&
       nextPageToken !== undefined &&
       nextPageToken !== null &&
@@ -137,20 +167,9 @@ export default function AudioPage() {
   }, [nextPageToken, queueSelected]);
 
   const fetchFiles = async () => {
+    if (!folder) return;
     console.log('fetching files', folder);
     setIsLoadingFiles(true);
-    if (folder?.id === currentPlaylistFolder.id) {
-      if (filterQuery) {
-        const filteredFiles = queue.filter(file =>
-          file.name.toLowerCase().includes(filterQuery.toLowerCase())
-        );
-        setFiles(filteredFiles);
-      } else {
-        setFiles(queue);
-      }
-      setIsLoadingFiles(false);
-      return;
-    }
 
     try {
       const supabase = createClient();
@@ -159,10 +178,27 @@ export default function AudioPage() {
       } = await supabase.auth.getSession();
       if (!session) return;
 
+      if (folder.id === streamablePlaylist.id) {
+        if (filterQuery) {
+          const filteredFiles = streamableFiles.filter(file =>
+            file.name.toLowerCase().includes(filterQuery.toLowerCase())
+          );
+          setFiles(filteredFiles);
+        } else {
+          setFiles(streamableFiles);
+        }
+
+        setIsLoadingFiles(false);
+        return;
+      }
+
       const data = await listAudioFiles(supabase, session.user.id, {
-        folderId: folder?.id,
+        folderId: folder.type === 'playlist' ? undefined : folder.id,
         filterQuery,
+        tag: folder.type === 'playlist' ? folder.name : undefined,
       });
+      setNextPageToken(undefined);
+
       if (data) {
         console.log('files', data);
         const files = data.files;
@@ -172,7 +208,7 @@ export default function AudioPage() {
         setFiles(files);
         for (const file of files) {
           if (file.id) {
-            getAudioUrl(supabase, session.user.id, file.id, file.name, false).then(url => {
+            getAudioUrl(supabase, session.user.id, file.id, file.name).then(url => {
               if (url) {
                 file.url = url;
                 setFiles(prevFiles => {
@@ -183,7 +219,6 @@ export default function AudioPage() {
                   }
                   return updatedFiles;
                 });
-                addToQueue(file);
               }
             });
           }
@@ -223,11 +258,20 @@ export default function AudioPage() {
         const updatedFiles = [...prevFiles];
         const index = updatedFiles.findIndex(f => f.id === file.id);
         if (index !== -1) {
+          updatedFiles[index] = { ...updatedFiles[index], url };
+        }
+        return updatedFiles;
+      });
+      setStreamableFiles(prevFiles => {
+        const updatedFiles = [...prevFiles];
+        const index = updatedFiles.findIndex(f => f.id === file.id);
+        if (index !== -1) {
           updatedFiles[index] = { ...updatedFiles[index], url, loading: false };
         }
         return updatedFiles;
       });
       addToQueue(file);
+      clearCache(`streamable-${session.user.id}`);
     }
   };
 
@@ -239,11 +283,16 @@ export default function AudioPage() {
       } = await supabase.auth.getSession();
       if (!session) return;
 
-      const data = await listFolders(supabase, session.user.id);
+      const [data, defaultFolder] = await Promise.all([
+        listFolders(supabase, session.user.id),
+        getDefaultFolder(supabase, session.user.id),
+      ]);
       if (data) {
         console.log('folders', data);
         setFolders(data);
-        setFolder(data[1] ? data[1] : data[0]);
+        setFolder(
+          data.find(f => f.id === defaultFolder?.id) ?? data.filter(f => f.type === 'folder')[0]
+        );
       }
     } catch (error) {
       console.error('Error fetching files:', error);
@@ -288,6 +337,73 @@ export default function AudioPage() {
     });
 
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  };
+
+  const onFileChange = async (file: IFile) => {
+    const updatedFile = await getFile(null, file.id);
+    if (updatedFile) {
+      setFiles(prevFiles => {
+        const updatedFiles = [...prevFiles];
+        const index = updatedFiles.findIndex(f => f.id === file.id);
+        if (index !== -1) {
+          updatedFiles[index] = { ...updatedFiles[index], ...updatedFile };
+        }
+        return updatedFiles;
+      });
+    }
+  };
+
+  const loadPlaylist = async () => {
+    if (!folder) return;
+    console.log('Loading playlist', folder);
+
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const promises = [];
+
+    let triggeredFirstPlay = false;
+
+    for (const file of files) {
+      if (file.id) {
+        promises.push(
+          streamify(supabase, session.user.id, file.id, file.name).then(url => {
+            if (url) {
+              file.url = url;
+              setFiles(prevFiles => {
+                const updatedFiles = [...prevFiles];
+                const index = updatedFiles.findIndex(f => f.id === file.id);
+                if (index !== -1) {
+                  updatedFiles[index] = { ...updatedFiles[index], url };
+                }
+                return updatedFiles;
+              });
+              setStreamableFiles(prevFiles => {
+                const updatedFiles = [...prevFiles];
+                const index = updatedFiles.findIndex(f => f.id === file.id);
+                if (index !== -1) {
+                  updatedFiles[index] = { ...updatedFiles[index], url, loading: false };
+                }
+                return updatedFiles;
+              });
+              addToQueue(file);
+              clearCache(`streamable-${session.user.id}`);
+              if (!isPlaying && !triggeredFirstPlay) {
+                triggeredFirstPlay = true;
+                play(file);
+              }
+            }
+          })
+        );
+      }
+    }
+
+    await Promise.all(promises);
+    toast.success('Playlist loaded successfully');
+    fetchStreamableFiles();
   };
 
   return (
@@ -339,6 +455,7 @@ export default function AudioPage() {
         current={folder}
         folders={folders.filter(f => f.type === 'folder')}
         onFolderChange={(folder: IFolder) => {
+          setNextPageToken(undefined);
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
@@ -349,8 +466,9 @@ export default function AudioPage() {
 
       <PlayLists
         current={folder}
-        playlists={folders.filter(f => f.type === 'playlist')}
+        playlists={playlists}
         onFolderChange={(folder: IFolder) => {
+          setNextPageToken(undefined);
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
@@ -360,6 +478,7 @@ export default function AudioPage() {
 
       <FileList
         files={files}
+        folder={folder}
         onSearch={onSearch}
         onFilesChange={fetchFiles}
         fetchMore={fetchMore}
@@ -367,6 +486,10 @@ export default function AudioPage() {
         isFetchingMore={isFetchingMore}
         streamifyFile={streamifyFile}
         isLoadingFiles={isLoadingFiles}
+        streamableFiles={streamableFiles}
+        playlists={playlists.filter(f => f.id !== streamablePlaylist.id)}
+        onFileChange={onFileChange}
+        loadPlaylist={loadPlaylist}
       />
 
       {/* Unlink Google Confirmation Dialog */}

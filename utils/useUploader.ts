@@ -1,12 +1,14 @@
 import { IFile } from '@/types/file';
 import { IFolder } from '@/types/folder';
 import { GoogleDrivePage } from '@/types/google-drive';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { PostgrestSingleResponse, SupabaseClient } from '@supabase/supabase-js';
 import { getCachedDriveFiles, getCachedGoogleDriveToken } from './cache';
 import {
     getFileDirectLink,
     getOrCreateFolder,
+    listFilesInFolder,
     listFoldersInFolder,
+    mapGoogleFile,
     uploadToGoogleDrive,
 } from './googleDrive';
 import { streamFromDriveToBunny, streamFromDriveToSupabase } from './stream';
@@ -28,12 +30,16 @@ export async function uploadAudio(supabase: SupabaseClient, file: File, userId: 
 export async function listAudioFiles(
     supabase: SupabaseClient,
     userId: string,
-    options: { folderId?: string; pageToken?: string; filterQuery?: string }
+    options: { folderId?: string; pageToken?: string; filterQuery?: string; tag?: string }
 ): Promise<GoogleDrivePage | { files: IFile[] } | null> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
         // return listFilesInFolder(googleDriveAccessToken, options);
-        return getCachedDriveFiles(userId, googleDriveAccessToken, options);
+        const data = await listFilesInFolder(googleDriveAccessToken, options);
+        return {
+            ...data,
+            files: data.files.map(file => mapGoogleFile(file)),
+        };
     } else {
         const path = `${userId}/` + (options.folderId ? `${options.folderId}/` : '');
         const { data, error } = await supabase.storage.from('audio').list(path, { limit: 60 });
@@ -60,7 +66,7 @@ export async function getDefaultFolder(
     return null;
 }
 
-export const currentPlaylistFolder: IFolder = {
+export const streamablePlaylist: IFolder = {
     id: 'STREAMABLE',
     name: 'Streamable',
     type: 'playlist',
@@ -68,38 +74,63 @@ export const currentPlaylistFolder: IFolder = {
 
 export async function listFolders(supabase: SupabaseClient, userId: string): Promise<IFolder[]> {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
-    const folders: IFolder[] = [currentPlaylistFolder];
+    const folders: IFolder[] = [streamablePlaylist];
+
+    const playlists = await supabase.from('playlists').select('*').eq('user_id', userId);
+
+    folders.push(
+        ...(playlists.data || []).map(
+            playlist =>
+                ({
+                    id: playlist.id,
+                    name: playlist.name,
+                    type: 'playlist',
+                }) as IFolder
+        )
+    );
+
     if (googleDriveAccessToken) {
         const defaultFolder = await getDefaultFolder(supabase, userId);
         if (defaultFolder) {
             folders.push(defaultFolder);
         }
-        folders.push(
-            ...(await listFoldersInFolder(googleDriveAccessToken)).map(
-                folder =>
-                    ({
-                        ...folder,
-                        type: 'folder',
-                    }) as IFolder
-            )
-        );
-    } else {
-        // TODO
+        // folders.push(
+        //     ...(await listFoldersInFolder(googleDriveAccessToken)).map(
+        //         folder =>
+        //             ({
+        //                 ...folder,
+        //                 type: 'folder',
+        //             }) as IFolder
+        //     )
+        // );
     }
 
     return folders;
+}
+
+export async function listSupaAudioFiles(
+    supabase: SupabaseClient,
+    userId: string
+): Promise<PostgrestSingleResponse<any[]>> {
+    return supabase.from('audio_file').select('*').eq('user_id', userId);
 }
 
 export async function getAudioUrl(
     supabase: SupabaseClient,
     userId: string,
     fileId: string,
-    filename: string,
-    streamify = true
+    filename: string
 ) {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
-        return streamFromDriveToSupabase(supabase, fileId, googleDriveAccessToken, streamify);
+        return streamFromDriveToSupabase(
+            supabase,
+            userId,
+            fileId,
+            filename,
+            googleDriveAccessToken,
+            false
+        );
         // return streamFromDriveToBunny(fileId, googleDriveAccessToken);
         // const exists = await exsistsInBunny(fileId);
         // if (exists) {
@@ -121,7 +152,14 @@ export async function streamify(
 ) {
     const googleDriveAccessToken = await getCachedGoogleDriveToken(supabase, userId);
     if (googleDriveAccessToken) {
-        return streamFromDriveToSupabase(supabase, fileId, googleDriveAccessToken, streamify);
+        return streamFromDriveToSupabase(
+            supabase,
+            userId,
+            fileId,
+            filename,
+            googleDriveAccessToken,
+            streamify
+        );
         // return streamFromDriveToBunny(fileId, filename, googleDriveAccessToken);
     } else {
         const { data } = supabase.storage.from('audio').getPublicUrl(`${userId}/${filename}`);

@@ -1,3 +1,4 @@
+import { IFile } from '@/types/file';
 import { GoogleDriveFile, GoogleDrivePage } from '@/types/google-drive';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getCachedGoogleDriveToken } from './cache';
@@ -122,8 +123,8 @@ export async function listFilesInFolder(
   options: { folderId?: string; pageToken?: string; filterQuery?: string; tag?: string }
 ): Promise<GoogleDrivePage> {
   let { folderId, pageToken, filterQuery, tag } = options;
-  console.log('listFilesInFolder', folderId, pageToken, filterQuery);
   folderId = folderId || (await getOrCreateFolder(accessToken, 'TibeeMusic'));
+  console.log('listFilesInFolder', folderId, pageToken, filterQuery);
   let query = encodeURIComponent(
     `'${folderId}' in parents and mimeType contains 'audio/' and trashed = false`
   );
@@ -133,8 +134,9 @@ export async function listFilesInFolder(
   if (tag) {
     query += ` and appProperties has { key = 'tag_${tag}' and value='1' }`;
   }
+  const pageSize = 48;
   const url =
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink,mimeType,appProperties),nextPageToken&pageSize=48` +
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,webViewLink,mimeType,appProperties),nextPageToken&pageSize=${pageSize}` +
     (pageToken ? `&pageToken=${pageToken}` : '');
   const res = await fetch(url, {
     method: 'GET',
@@ -151,7 +153,49 @@ export async function listFilesInFolder(
   return data; // Liste des fichiers avec leurs détails
 }
 
-export async function updateTags(accessToken: string | null, fileId: string, tags: string[]) {
+export function mapGoogleFile(file: any | null): IFile {
+  if (file) {
+    return {
+      ...file,
+      tags: Object.keys(file.appProperties || {}).map(key => ({
+        key: key.replace('tag_', ''),
+        value: file.appProperties[key],
+      })),
+    };
+  }
+  return file;
+}
+
+export async function getFile(accessToken: string | null, fileId: string): Promise<IFile | null> {
+  if (!accessToken) {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return null;
+    accessToken = await getCachedGoogleDriveToken(supabase, session.user.id);
+  }
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,webViewLink,mimeType,appProperties`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const data = await res.json();
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+  console.log('File :', data);
+  return mapGoogleFile(data); // Liste des fichiers avec leurs détails
+}
+
+export async function updateTags(
+  accessToken: string | null,
+  fileId: string,
+  tags: { key: string; value: boolean }[]
+) {
   if (!accessToken) {
     const supabase = createClient();
     const {
@@ -167,7 +211,35 @@ export async function updateTags(accessToken: string | null, fileId: string, tag
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      appProperties: Object.fromEntries(tags.map(tag => [`tag_${tag}`, '1'])),
+      appProperties: Object.fromEntries(
+        tags.map(tag => [`tag_${tag.key}`, tag.value ? '1' : null])
+      ),
+    }),
+  });
+}
+
+export async function updateTag(
+  accessToken: string | null,
+  fileId: string,
+  tag: { key: string; value: boolean }
+) {
+  console.log('updateTag', accessToken, fileId, tag);
+  if (!accessToken) {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    accessToken = await getCachedGoogleDriveToken(supabase, session.user.id);
+  }
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      appProperties: { [`tag_${tag.key}`]: tag.value ? '1' : null },
     }),
   });
 }

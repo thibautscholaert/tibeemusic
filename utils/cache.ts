@@ -69,10 +69,47 @@ export async function getCachedFileList(supabase: SupabaseClient): Promise<any[]
   return promise;
 }
 
+export async function getCachedStreambleFiles(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<any[]> {
+  const cacheKey = `streamable-${userId}`;
+  const now = Date.now();
+
+  const cached = cache.get(cacheKey);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.promise;
+  }
+
+  // ⚡️ Crée une seule promesse et la stocke immédiatement
+  const promise = Promise.resolve(
+    supabase
+      .from('audio_file')
+      .select('*')
+      .eq('user_id', userId)
+      .then(res => {
+        if (res.error) {
+          console.error('Supabase error:', res.error.message);
+          return [];
+        }
+        return res.data ?? [];
+      })
+  );
+
+  // 🧠 Met à jour le cache avec une nouvelle promesse et TTL
+  cache.set(cacheKey, {
+    promise,
+    expiresAt: now + 60_000, // 1 minute
+  });
+
+  return promise;
+}
+
 export async function getCachedDriveFiles(
   userId: string,
   accessToken: string,
-  options: { folderId?: string; pageToken?: string; filterQuery?: string }
+  options: { folderId?: string; pageToken?: string; filterQuery?: string; tag?: string }
 ): Promise<GoogleDrivePage> {
   const cacheKey = `drive-files-${userId}-${options.folderId || ''}-${options.pageToken || ''}-${options.filterQuery || ''}`;
   const now = Date.now();
@@ -89,7 +126,7 @@ export async function getCachedDriveFiles(
   // 🧠 Met à jour le cache avec une nouvelle promesse et TTL
   cache.set(cacheKey, {
     promise,
-    expiresAt: now + 600_000, // 10 minutes
+    expiresAt: now + 60_000, // 1 minute
   });
 
   return promise;
