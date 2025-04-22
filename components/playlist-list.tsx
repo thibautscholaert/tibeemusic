@@ -97,11 +97,12 @@ export default function PlayLists({
             </div>
             <Button
               className="px-2"
-              variant={'accent'}
+              variant={'outlineAccent'}
               disabled={isLoadingFiles}
               onClick={() => setAddPlaylistOpen(true)}
             >
-              <ListPlusIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+              <ListPlusIcon className="h-6 w-6" />
+              <span className='hidden sm:inline text-base ml-2 text-primary'>New playlist</span>
             </Button>
           </div>
         </CardContent>

@@ -100,9 +100,10 @@ export default function FileUpload({ onUploadComplete, rootDriveFolder }: FileUp
             You can select a file and upload it. This component is basic and allows only 1 file
             import.
           </span>
-          <span className="font-semibold">
+          <span className="font-medium my-2">
             <InfoIcon className="mr-2 inline h-4 w-4" />I strongly recommend you to go directly to
-            google drive to upload/manage your files.
+            google drive to upload/manage your files in the folder <Link href={`https://drive.google.com/drive/u/0/folders/${folderId}`}
+              target="_blank" className='font-bold text-lime-400'>TibeeMusic</Link>.
           </span>
           <Button asChild variant={'default'}>
             <Link

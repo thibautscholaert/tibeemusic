@@ -19,6 +19,8 @@ const buttonVariants = cva(
           'border-transparent bg-secondary text-secondary-foreground shadow-sm sm:hover:bg-secondary/80',
         accent:
           'border-transparent bg-transparent text-lime-400 shadow-sm sm:hover:bg-secondary/80',
+        outlineAccent:
+          'border-lime-400/50 bg-transparent text-lime-400 shadow-sm sm:hover:bg-secondary/80',
         ghost: 'border-transparent sm:hover:bg-accent sm:hover:text-accent-foreground',
         link: 'border-transparent text-primary underline-offset-4 sm:hover:underline',
       },
