@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 
 export default function AudioPage() {
   const [googleDriveConnected, setGoogleDriveConnected] = useState(false);
+  const [googleDriveConnectedReady, setGoogleDriveConnectedReady] = useState(false);
   const [folder, setFolder] = useState<IFolder | null>(null);
   const [folders, setFolders] = useState<IFolder[]>([]);
   const [files, setFiles] = useState<IFile[]>([]);
@@ -46,6 +47,9 @@ export default function AudioPage() {
   const [googleDriveConnectedHover, setGoogleDriveConnectedHover] = useState(false);
   const [unlinkDriveOpen, setUnlinkDriveOpen] = useState(false);
   const [streamableFiles, setStreamableFiles] = useState<IFile[]>([]);
+  const rootDriveFolder = useMemo(() => {
+    return folders.filter(f => f.type === 'folder')[0] ?? null;
+  }, [folders]);
 
   const playlists = useMemo(() => {
     return folders.filter(f => f.type === 'playlist');
@@ -55,13 +59,13 @@ export default function AudioPage() {
     return folder?.id === streamablePlaylist.id;
   }, [folder]);
   const [filterQuery, setFilterQuery] = useState('');
-  const { addToQueue, play, isPlaying } = usePlayer();
+  const { play, addToQueue, clearQueue, setCurrentPlaylist } = usePlayer();
 
   useEffect(() => {
     init();
   }, []);
 
-  const init = () => {
+  const init = async () => {
     checkGoogleDriveConnected();
     fetchFolders();
     fetchStreamableFiles();
@@ -85,6 +89,7 @@ export default function AudioPage() {
     if (token) {
       setGoogleDriveConnected(true);
     }
+    setGoogleDriveConnectedReady(true);
   };
 
   const fetchStreamableFiles = async () => {
@@ -258,7 +263,7 @@ export default function AudioPage() {
         const updatedFiles = [...prevFiles];
         const index = updatedFiles.findIndex(f => f.id === file.id);
         if (index !== -1) {
-          updatedFiles[index] = { ...updatedFiles[index], url };
+          updatedFiles[index] = { ...updatedFiles[index], ...file };
         }
         return updatedFiles;
       });
@@ -266,7 +271,9 @@ export default function AudioPage() {
         const updatedFiles = [...prevFiles];
         const index = updatedFiles.findIndex(f => f.id === file.id);
         if (index !== -1) {
-          updatedFiles[index] = { ...updatedFiles[index], url, loading: false };
+          updatedFiles[index] = { ...updatedFiles[index], ...file };
+        } else {
+          updatedFiles.push({ ...file, url });
         }
         return updatedFiles;
       });
@@ -366,6 +373,8 @@ export default function AudioPage() {
     const promises = [];
 
     let triggeredFirstPlay = false;
+    setCurrentPlaylist(folder);
+    clearQueue();
 
     for (const file of files) {
       if (file.id) {
@@ -391,7 +400,7 @@ export default function AudioPage() {
               });
               addToQueue(file);
               clearCache(`streamable-${session.user.id}`);
-              if (!isPlaying && !triggeredFirstPlay) {
+              if (!triggeredFirstPlay) {
                 triggeredFirstPlay = true;
                 play(file);
               }
@@ -404,6 +413,69 @@ export default function AudioPage() {
     await Promise.all(promises);
     toast.success('Playlist loaded successfully');
     fetchStreamableFiles();
+  };
+
+  const addPlaylist = async (name: string) => {
+    console.log('Adding playlist', name);
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data, error } = await supabase
+      .from('playlists')
+      .insert([{ name, user_id: session.user.id }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating playlist:', error);
+      toast.error('Failed to create playlist');
+    } else {
+      console.log('Playlist created successfully', data);
+      toast.success('Playlist created successfully');
+    }
+    fetchFolders();
+  };
+
+  const deletePlaylist = async (playlist: IFolder) => {
+    console.log('Deleting playlist', playlist.id, playlist.name);
+
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const { error } = await supabase.from('playlists').delete().eq('id', playlist.id);
+    if (error) {
+      console.error('Error deleting playlist:', error);
+      toast.error('Failed to delete playlist');
+    } else {
+      console.log('Playlist deleted successfully');
+      toast.success('Playlist deleted successfully');
+    }
+    fetchFolders();
+  };
+
+  const deleteFile = async (file: IFile) => {
+    console.log('Deleting file', file.id, file.name);
+
+    // TODO : delete from google drive
+
+    // const supabase = createClient();
+    // const {
+    //   data: { session },
+    // } = await supabase.auth.getSession();
+    // if (!session) return;
+    // const { error } = await supabase.from('playlists').delete().eq('id', playlist.id);
+    // if (error) {
+    //   console.error('Error deleting playlist:', error);
+    //   toast.error('Failed to delete playlist');
+    // } else {
+    //   console.log('Playlist deleted successfully');
+    //   toast.success('Playlist deleted successfully');
+    // }
+    fetchFiles();
   };
 
   return (
@@ -432,7 +504,7 @@ export default function AudioPage() {
             )}
           </Button>
         ) : (
-          <Button onClick={connectGoogleDrive}>
+          <Button onClick={connectGoogleDrive} disabled={!googleDriveConnectedReady}>
             <LinkIcon className="mr-2 h-4 w-4" />
             Connect Google Drive
           </Button>
@@ -446,7 +518,7 @@ export default function AudioPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogTitle></DialogTitle>
-            <FileUpload onUploadComplete={handleUploadComplete} />
+            <FileUpload onUploadComplete={handleUploadComplete} rootDriveFolder={rootDriveFolder} />
           </DialogContent>
         </Dialog>
       </div>
@@ -459,7 +531,6 @@ export default function AudioPage() {
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
-        googleDriveConnected={googleDriveConnected}
       />
 
       <div className="my-2" />
@@ -472,6 +543,7 @@ export default function AudioPage() {
           setFolder(folder);
         }}
         isLoadingFiles={isLoadingFiles}
+        addPlaylist={addPlaylist}
       />
 
       <div className="my-2" />
@@ -490,6 +562,8 @@ export default function AudioPage() {
         playlists={playlists.filter(f => f.id !== streamablePlaylist.id)}
         onFileChange={onFileChange}
         loadPlaylist={loadPlaylist}
+        deletePlaylist={deletePlaylist}
+        deleteFile={deleteFile}
       />
 
       {/* Unlink Google Confirmation Dialog */}

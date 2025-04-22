@@ -51,6 +51,8 @@ interface FileListProps {
   playlists: IFolder[];
   onFileChange: (file: IFile) => Promise<void>;
   loadPlaylist: () => Promise<void>;
+  deletePlaylist: (playlist: IFolder) => Promise<void>;
+  deleteFile: (file: IFile) => Promise<void>;
 }
 
 export default function FileList({
@@ -66,17 +68,21 @@ export default function FileList({
   playlists,
   onFileChange,
   loadPlaylist,
+  deletePlaylist,
+  deleteFile,
 }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<IFile | null>(null);
+  const [playlistToDelete, setPLaylistToDelete] = useState<IFolder | null>(null);
   const [fileToEdit, setFileToEdit] = useState<IFile | null>(null);
   const [query, setQuery] = useState('');
   const [isUpdatingTag, setIsUpdatingTag] = useState(false);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
 
-  const fullyLoaded = useMemo(() => {
-    return files.every(file => Boolean(file.url) && streamableFiles.some(f => f.id === file.id));
-  }, [files, streamableFiles]);
+  const fullyLoaded = useMemo(
+    () => files.every(file => Boolean(file.url) && streamableFiles.some(f => f.id === file.id)),
+    [files, streamableFiles]
+  );
 
   const observerRef = useRef(null);
 
@@ -119,7 +125,7 @@ export default function FileList({
     debouncedSearch(value);
   };
 
-  const { currentFile, play, pause, isPlaying } = usePlayer();
+  const { currentFile, play, pause, isPlaying, currentPlaylist } = usePlayer();
 
   const handlePlay = async (file: IFile) => {
     try {
@@ -200,36 +206,12 @@ export default function FileList({
     setFileToDelete(file);
   };
 
-  const handleDelete = async () => {
-    if (!fileToDelete) return;
-
-    try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Not authenticated');
-        return;
-      }
-
-      // TODO
-
-      // const { error } = await supabase.storage
-      //   .from('audio')
-      //   .remove([`${session.user.id}/${fileToDelete}`]);
-
-      // if (error) {
-      //   toast.error('Error deleting file');
-      // } else {
-      //   toast.success('File deleted successfully');
-      //   onFilesChange();
-      // }
-    } catch (error) {
-      toast.error('Error deleting file');
-    } finally {
-      setFileToDelete(null);
-    }
+  const handleDeleteFile = async (file: IFile) => {
+    if (!file) return;
+    setIsLoadingPlaylist(true);
+    await deleteFile(file);
+    setFileToDelete(null);
+    setIsLoadingPlaylist(false);
   };
 
   const handleUpdateTag = async (file: IFile, tag: ITag) => {
@@ -241,8 +223,19 @@ export default function FileList({
   };
 
   const handleLoadPlaylist = async () => {
+    if (currentPlaylist?.id === folder?.id) {
+      toast.info('Playlist already loaded');
+      return;
+    }
     setIsLoadingPlaylist(true);
     await loadPlaylist();
+    setIsLoadingPlaylist(false);
+  };
+
+  const handleDeletePlaylist = async (playlist: IFolder) => {
+    setIsLoadingPlaylist(true);
+    await deletePlaylist(playlist);
+    setPLaylistToDelete(null);
     setIsLoadingPlaylist(false);
   };
 
@@ -274,21 +267,35 @@ export default function FileList({
             </div>
 
             {folder?.type === 'playlist' && (
-              <Button
-                // variant={fullyLoaded ? 'outline' : 'default'}
-                className={classNames('ml-2 gap-2', {
-                  'bg-lime-300': fullyLoaded,
-                })}
-                onClick={handleLoadPlaylist}
-                disabled={isLoadingPlaylist}
-              >
-                {isLoadingPlaylist ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <AudioLinesIcon className="h-4 w-4" />
-                )}
-                <span>Stream</span>
-              </Button>
+              <div className="ml-1 flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant={fullyLoaded ? 'default' : 'outline'}
+                  className={classNames('ml-2 gap-2 px-2 sm:px-4', {
+                    'bg-accent text-primary': fullyLoaded,
+                  })}
+                  onClick={handleLoadPlaylist}
+                  disabled={isLoadingPlaylist || isLoading || isLoadingFiles}
+                >
+                  {isLoadingPlaylist ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <AudioLinesIcon
+                      className={classNames('h-4 w-4', {
+                        'animate-powerfulPulse': currentPlaylist?.id === folder?.id && isPlaying,
+                        'font-bold text-lime-400': fullyLoaded,
+                      })}
+                    />
+                  )}
+                  <span>Stream</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setPLaylistToDelete(folder!)}
+                  className="px-2"
+                >
+                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </div>
             )}
           </CardDescription>
         </CardHeader>
@@ -435,10 +442,21 @@ export default function FileList({
 
                 {files.length === 0 && (
                   <div className="py-8 text-center">
-                    <p className="text-muted-foreground">No files uploaded yet</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Upload audio files to get started
-                    </p>
+                    {folder?.type === 'playlist' ? (
+                      <>
+                        <p className="text-muted-foreground">Empty playlist</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Add files to the playlist to get started
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">No files uploaded yet</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Upload audio files to get started
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -461,14 +479,36 @@ export default function FileList({
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{fileToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete file "{fileToDelete?.name}"? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFileToDelete(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
+            <Button variant="destructive" onClick={() => handleDeleteFile(fileToDelete!)}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete playlist Confirmation Dialog */}
+      <Dialog open={!!playlistToDelete} onOpenChange={open => !open && setPLaylistToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm playlist deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete playlist "{playlistToDelete?.name}"? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPLaylistToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={() => handleDeletePlaylist(playlistToDelete!)}>
               Delete
             </Button>
           </DialogFooter>

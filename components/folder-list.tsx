@@ -17,7 +17,6 @@ interface FolderListProps {
   folders: IFolder[];
   onFolderChange: (folder: IFolder) => void;
   isLoadingFiles: boolean;
-  googleDriveConnected: boolean;
 }
 
 export default function FolderList({
@@ -25,18 +24,15 @@ export default function FolderList({
   onFolderChange,
   current,
   isLoadingFiles,
-  googleDriveConnected,
 }: FolderListProps) {
   return (
     <>
       <Card>
         <CardContent>
           <div className="grid auto-cols-max grid-flow-col gap-1 overflow-x-auto px-2 py-2 sm:gap-2">
-            {googleDriveConnected && (
-              <div className="mr-2 flex items-center">
-                <img src="google_drive.png" alt="Google Drive" className="h-9 w-9" />
-              </div>
-            )}
+            <div className="mr-2 flex items-center">
+              <img src="google_drive.png" alt="Google Drive" className="h-9 w-9" />
+            </div>
             {folders.map((folder, index) => {
               const isActive = current?.id === folder.id;
               return (

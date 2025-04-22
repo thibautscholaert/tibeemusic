@@ -19,9 +19,11 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
+import { IFolder } from '@/types/folder';
 
 interface GlobalPlayerProps {
   currentFile: IFile | null;
+  currentPlaylist: IFolder | null;
   queue: IFile[];
   queueIndex: number;
   isPlaying: boolean;
@@ -35,6 +37,7 @@ interface GlobalPlayerProps {
 
 export default function GlobalPlayer({
   currentFile,
+  currentPlaylist,
   isPlaying: isPlayingExt,
   queue,
   queueIndex,
@@ -215,14 +218,14 @@ export default function GlobalPlayer({
     >
       <div className="mx-auto flex w-full max-w-4xl flex-col items-center justify-center space-y-4">
         <div className="flex w-full flex-col space-y-1 sm:space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 sm:space-x-4">
+          <div className="flex items-center justify-between gap-1 sm:gap-2">
+            <div className="flex items-center space-x-0.5 sm:space-x-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onPrevious}
                 disabled={!hasPrevious()}
-                className="h-8 w-8"
+                className="h-8 w-6 sm:w-8"
               >
                 <SkipBack className="h-4 w-4" />
               </Button>
@@ -230,15 +233,15 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={() => togglePlayPause(isPlaying)}
-                className="h-6 w-6 sm:h-10 sm:w-10"
+                className="h-5 w-5 sm:h-10 sm:w-10"
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin sm:h-5 sm:w-5" />
                 ) : isPlaying ? (
-                  <Pause className="h-5 w-5 animate-pulse" />
+                  <Pause className="h-4 w-4 animate-pulse sm:h-5 sm:w-5" />
                 ) : (
-                  <Play className="h-5 w-5" />
+                  <Play className="h-4 w-4 sm:h-5 sm:w-5" />
                 )}
               </Button>
               <Button
@@ -246,16 +249,33 @@ export default function GlobalPlayer({
                 size="icon"
                 onClick={onNext}
                 disabled={!hasNext()}
-                className="h-8 w-8"
+                className="h-8 w-6 sm:w-8"
               >
                 <SkipForward className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <Button variant="ghost" size="icon" onClick={skipBackward} className="h-8 w-8">
+            <div className="flex items-center space-x-0.5 overflow-x-auto sm:space-x-2">
+              {currentFile &&
+                currentFile.tags &&
+                currentFile.tags.map(tag => (
+                  <span
+                    className="max-w-32 rounded-lg border border-lime-400/50 bg-background px-1 py-0.5 text-xs font-medium text-lime-400 sm:text-sm"
+                    key={tag.key}
+                  >
+                    {tag.key}
+                  </span>
+                ))}
+            </div>
+            <div className="flex items-center space-x-0.5 sm:space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={skipBackward}
+                className="hidden h-8 w-6 sm:flex sm:w-8"
+              >
                 <ChevronsLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={toggleMute} className="h-8 w-8">
+              <Button variant="ghost" size="icon" onClick={toggleMute} className="h-8 w-6 sm:w-8">
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
               <Slider
@@ -264,9 +284,14 @@ export default function GlobalPlayer({
                 max={1}
                 step={0.01}
                 onValueChange={handleVolumeChange}
-                className="w-24"
+                className="w-20 sm:w-32"
               />
-              <Button variant="ghost" size="icon" onClick={skipForward} className="h-8 w-8">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={skipForward}
+                className="hidden h-8 w-6 sm:flex sm:w-8"
+              >
                 <ChevronsRight className="h-4 w-4" />
               </Button>
               <Button

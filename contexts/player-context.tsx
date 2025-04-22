@@ -1,11 +1,14 @@
 'use client';
 
 import { IFile } from '@/types/file';
+import { IFolder } from '@/types/folder';
 import { clearAllTagsFromFile, updateTags } from '@/utils/googleDrive';
 import { createContext, ReactNode, useContext, useState } from 'react';
 
 interface PlayerContextType {
   currentFile: IFile | null;
+  currentPlaylist: IFolder | null;
+  setCurrentPlaylist: (playlist: IFolder | null) => void;
   isPlaying: boolean;
   queue: IFile[];
   queueIndex: number;
@@ -23,13 +26,15 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [currentFile, setCurrentFile] = useState<IFile | null>(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState<IFolder | null>(null);
   const [queue, setQueue] = useState<IFile[]>([]);
   const [queueIndex, setQueueIndex] = useState<number>(0);
   const [isPlaying, setPlaying] = useState<boolean>(false);
 
   const play = (file: IFile | null) => {
     setCurrentFile(file);
-    setQueueIndex(queue.findIndex(f => f.id === file?.id));
+    const fileIndex = queue.findIndex(f => f.id === file?.id);
+    setQueueIndex(fileIndex !== -1 ? fileIndex : 0);
     setPlaying(true);
   };
 
@@ -56,11 +61,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const hasNext = () => {
-    return true;
+    return queue.length > 0;
   };
 
   const hasPrevious = () => {
-    return true;
+    return queue.length > 0;
   };
 
   const previous = () => {
@@ -69,8 +74,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setQueueIndex(prev => prev - 1);
       setCurrentFile(nextFile);
     } else {
-      const nextFile = queue[queue.length - 1];
-      setQueueIndex(queue.length - 1);
+      const nextFile = queue[0];
+      setQueueIndex(0);
       setCurrentFile(nextFile);
     }
   };
@@ -97,13 +102,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const clearQueue = () => {
     console.log('clearQueue');
-    setQueue([]);
+    setQueue(() => []);
   };
 
   return (
     <PlayerContext.Provider
       value={{
         currentFile,
+        currentPlaylist,
+        setCurrentPlaylist,
         isPlaying,
         queue,
         queueIndex,
