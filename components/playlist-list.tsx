@@ -1,8 +1,8 @@
 'use client';
 
 import { IFolder } from '@/types/folder';
-import classNames from 'classnames';
-import { AudioLinesIcon, ListPlusIcon } from 'lucide-react';
+import { streamablePlaylist } from '@/utils/useUploader';
+import { ListPlusIcon, PlayCircleIcon } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -35,9 +35,10 @@ export default function PlayLists({
   const [playlistName, setPlaylistName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const handleAddPlaylist = (name: string) => {
+  const handleAddPlaylist = (inputName: string) => {
+    const name = inputName.trim();
     setError(null);
-    if (name.trim() === '') {
+    if (name === '') {
       setError('Please enter a valid playlist name');
       return;
     }
@@ -66,7 +67,7 @@ export default function PlayLists({
           <CardDescription className="flex items-center justify-center"></CardDescription>
         </CardHeader> */}
         <CardContent>
-          <div className="flex items-center justify-between gap-1 px-2 py-1 sm:gap-2">
+          <div className="flex items-center justify-between gap-2 px-2 py-1 sm:gap-4">
             <div className="mr-1 flex items-center py-1">
               <img src="playlist.png" alt="playlist" className="h-9 w-9" />
             </div>
@@ -74,11 +75,12 @@ export default function PlayLists({
             <div className="grid auto-cols-max grid-flow-col gap-1 overflow-x-auto py-1 sm:gap-2">
               {playlists.map((folder, index) => {
                 const isActive = current?.id === folder.id;
+                const isSteamableFolder = streamablePlaylist.id === folder?.id;
                 return (
                   <Button
                     key={`${folder.id}-${index}`}
                     onClick={() => onFolderChange(folder)}
-                    variant={isActive ? 'default' : 'outline'}
+                    variant={isSteamableFolder ? (isActive ? 'secondary' : 'outline') : (isActive ? 'default' : 'outline')}
                     disabled={isLoadingFiles}
                     className="px-2 sm:px-4"
                   >
@@ -88,17 +90,18 @@ export default function PlayLists({
                         `${isActive ? 'text-lime-600' : 'text-lime-400'}`
                       )}
                     /> */}
-                    {folder.name}
+                    {isSteamableFolder ? <PlayCircleIcon className="h-6 w-6 text-lime-400" /> : folder.name}
                   </Button>
                 );
               })}
             </div>
             <Button
               className="px-2"
+              variant={'accent'}
               disabled={isLoadingFiles}
               onClick={() => setAddPlaylistOpen(true)}
             >
-              <ListPlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ListPlusIcon className="h-6 w-6 sm:h-7 sm:w-7" />
             </Button>
           </div>
         </CardContent>

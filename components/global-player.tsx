@@ -224,7 +224,7 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={onPrevious}
-                disabled={!hasPrevious()}
+                disabled={isLoading || !hasPrevious()}
                 className="h-8 w-6 sm:w-8"
               >
                 <SkipBack className="h-4 w-4" />
@@ -248,7 +248,7 @@ export default function GlobalPlayer({
                 variant="ghost"
                 size="icon"
                 onClick={onNext}
-                disabled={!hasNext()}
+                disabled={isLoading || !hasNext()}
                 className="h-8 w-6 sm:w-8"
               >
                 <SkipForward className="h-4 w-4" />
@@ -298,7 +298,7 @@ export default function GlobalPlayer({
                 onClick={() => setHidden(!hidden)}
                 size="xs"
                 variant="outline"
-                // className="absolute top-0.5 right-0.5"
+              // className="absolute top-0.5 right-0.5"
               >
                 {hidden ? (
                   <ChevronsUpIcon className="h-4 w-4" />

@@ -46,8 +46,8 @@ export default function RootLayout({
                   <div className="w-full  flex justify-between items-center sm:p-3 sm:px-5 p-2 text-sm">
                     <div className="flex gap-5 items-center font-semibold">
                       <Link href={"/"} className="flex items-center gap-1 sm:gap-2">
-                      <img src="logo.png" className="sm:w-12 sm:h-12 w-10 h-10"/>
-                      <span className="sm:text-lg">TibeeMusic</span>
+                        <img src="logo.png" className="sm:w-12 sm:h-12 w-10 h-10" />
+                        <span className="sm:text-lg">TibeeMusic</span>
                       </Link>
                     </div>
 
@@ -58,7 +58,7 @@ export default function RootLayout({
 
                   </div>
                 </nav>
-                <div className="flex flex-col sm:gap-6 gap-3  w-full sm:p-5 p-1 sm:pb-32 pb-16">
+                <div className="flex items-center flex-col sm:gap-6 gap-3  w-full sm:p-5 p-1 sm:pb-32 pb-16">
                   {children}
                 </div>
 

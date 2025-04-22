@@ -68,7 +68,7 @@ export default function AudioPage() {
   const init = async () => {
     checkGoogleDriveConnected();
     fetchFolders();
-    fetchStreamableFiles();
+    syncStreamable().then(() => fetchStreamableFiles());
   };
 
   useEffect(() => {
@@ -90,6 +90,10 @@ export default function AudioPage() {
       setGoogleDriveConnected(true);
     }
     setGoogleDriveConnectedReady(true);
+  };
+
+  const syncStreamable = async () => {
+    return fetch('/api/sync');
   };
 
   const fetchStreamableFiles = async () => {
@@ -438,6 +442,32 @@ export default function AudioPage() {
     fetchFolders();
   };
 
+
+  const editPlaylist = async (playlist: IFolder, name: string) => {
+    console.log('Editing playlist', playlist.name, name);
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data, error } = await supabase
+      .from('playlists')
+      .update({ name })
+      .eq('id', playlist.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating playlist:', error);
+      toast.error('Failed to create playlist');
+    } else {
+      console.log('Playlist created successfully', data);
+      toast.success('Playlist created successfully');
+    }
+    fetchFolders();
+  };
+
+
   const deletePlaylist = async (playlist: IFolder) => {
     console.log('Deleting playlist', playlist.id, playlist.name);
 
@@ -564,6 +594,7 @@ export default function AudioPage() {
         loadPlaylist={loadPlaylist}
         deletePlaylist={deletePlaylist}
         deleteFile={deleteFile}
+        editPlaylist={editPlaylist}
       />
 
       {/* Unlink Google Confirmation Dialog */}

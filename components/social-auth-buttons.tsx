@@ -32,17 +32,18 @@ export default function SocialAuthButtons() {
         onClick={handleGoogleSignIn}
         className="w-full"
       >
-        <Mail className="mr-2 h-4 w-4" />
+        <img src="google.png" alt="Google Drive" className="mr-2 h-4 w-4" />
+        {/* <Mail className="mr-2 h-4 w-4" /> */}
         Continue with Google
       </Button>
-      <Button
+      {/* <Button
         variant="outline"
         onClick={handleGithubSignIn}
         className="w-full"
       >
         <Github className="mr-2 h-4 w-4" />
         Continue with GitHub
-      </Button>
+      </Button> */}
       <div className="relative my-4">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />

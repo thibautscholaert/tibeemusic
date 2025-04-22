@@ -4,7 +4,7 @@ import { usePlayer } from '@/contexts/player-context';
 import { IFile, ITag } from '@/types/file';
 import { updateTag } from '@/utils/googleDrive';
 import { createClient } from '@/utils/supabase/client';
-import { getDlUrl } from '@/utils/useUploader';
+import { getDlUrl, streamablePlaylist } from '@/utils/useUploader';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import {
@@ -18,6 +18,8 @@ import {
   Loader2,
   Pause,
   Play,
+  PlayCircleIcon,
+  PlaySquareIcon,
   Trash2,
   XIcon,
 } from 'lucide-react';
@@ -52,6 +54,7 @@ interface FileListProps {
   onFileChange: (file: IFile) => Promise<void>;
   loadPlaylist: () => Promise<void>;
   deletePlaylist: (playlist: IFolder) => Promise<void>;
+  editPlaylist: (playlist: IFolder, name: string) => void;
   deleteFile: (file: IFile) => Promise<void>;
 }
 
@@ -69,6 +72,7 @@ export default function FileList({
   onFileChange,
   loadPlaylist,
   deletePlaylist,
+  editPlaylist,
   deleteFile,
 }: FileListProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -78,6 +82,9 @@ export default function FileList({
   const [query, setQuery] = useState('');
   const [isUpdatingTag, setIsUpdatingTag] = useState(false);
   const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [playlistToEdit, setPlaylistToEdit] = useState<IFolder | null>(null);
+  const [playlistName, setPlaylistName] = useState('');
 
   const fullyLoaded = useMemo(
     () => files.every(file => Boolean(file.url) && streamableFiles.some(f => f.id === file.id)),
@@ -239,6 +246,36 @@ export default function FileList({
     setIsLoadingPlaylist(false);
   };
 
+
+  const handleEditPlaylist = (playlist: IFolder | null, inputName: string) => {
+    if (!playlist) return;
+    const name = inputName.trim();
+    setError(null);
+    if (name === '') {
+      setError('Please enter a valid playlist name');
+      return;
+    }
+    if (playlists.some(playlist => playlist.name === name)) {
+      setError('Playlist already exists');
+      return;
+    }
+    if (name.length > 20) {
+      setError('Playlist name must be less than 20 characters');
+      return;
+    }
+    if (name.length < 4) {
+      setError('Playlist name must be at least 4 characters');
+      return;
+    }
+    editPlaylist(playlist, name);
+    setPlaylistToEdit(null);
+    setPlaylistName('');
+  };
+
+  const isStreamablePlaylist = useMemo(() => {
+    return streamablePlaylist.id === folder?.id;
+  }, [folder]);
+
   return (
     <>
       <Card>
@@ -267,34 +304,57 @@ export default function FileList({
             </div>
 
             {folder?.type === 'playlist' && (
-              <div className="ml-1 flex items-center gap-1 sm:gap-2">
+              <div className="ml-1 flex items-center gap-0">
                 <Button
-                  variant={fullyLoaded ? 'default' : 'outline'}
+                  variant={'ghost'}
                   className={classNames('ml-2 gap-2 px-2 sm:px-4', {
-                    'bg-accent text-primary': fullyLoaded,
+                    'text-primary': fullyLoaded,
                   })}
                   onClick={handleLoadPlaylist}
-                  disabled={isLoadingPlaylist || isLoading || isLoadingFiles}
+                  disabled={isLoadingPlaylist || isLoading || isLoadingFiles || files.length === 0}
                 >
                   {isLoadingPlaylist ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <AudioLinesIcon
-                      className={classNames('h-4 w-4', {
+                    <PlayCircleIcon
+                      className={classNames('h-6 w-6', {
                         'animate-powerfulPulse': currentPlaylist?.id === folder?.id && isPlaying,
                         'font-bold text-lime-400': fullyLoaded,
                       })}
                     />
                   )}
-                  <span>Stream</span>
+                  {/* <span>Stream</span> */}
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setPLaylistToDelete(folder!)}
-                  className="px-2"
-                >
-                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
+
+                {!isStreamablePlaylist && <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant={'ghost'} className='px-1' disabled={isLoadingPlaylist || isLoading || isLoadingFiles}
+                    >
+                      <EllipsisVertical className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-content min-w-24" align="start">
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setPlaylistToEdit(folder); setPlaylistName(folder?.name || '') }}
+                        disabled={true}>
+                        <EditIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setPLaylistToDelete(folder!)}
+                        className="px-2"
+                      >
+                        <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                }
+
               </div>
             )}
           </CardDescription>
@@ -363,27 +423,32 @@ export default function FileList({
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size={'xs'}>
-                                <EllipsisVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <EllipsisVertical className="h-4 w-4 sm:h-5 sm:w-5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-content" align="start">
+                            <DropdownMenuContent className="w-content min-w-24" align="start">
                               <div className="flex flex-col gap-1">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleDownload(file)}
                                 >
-                                  <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <Download className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={() => edit(file)}>
-                                  <EditIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => edit(file)}
+                                  disabled={true}>
+                                  <EditIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </Button>
                                 <Button
                                   variant="destructive"
                                   size="sm"
                                   onClick={() => confirmDelete(file)}
+                                  disabled={true}
                                 >
-                                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                                 </Button>
                               </div>
                             </DropdownMenuContent>
@@ -430,8 +495,11 @@ export default function FileList({
                               disabled={isFileLoading}
                               onClick={() => streamifyFile(file)}
                             >
-                              <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                              {isFileLoading ? <Loader2 className="h-3 w-3 animate-spin sm:h-4 sm:w-4" /> :
+                                <AudioLinesIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                              }
                             </Button>
+
                           )}
                         </div>
                         <span className="line-clamp-1 flex-grow text-ellipsis">{file.name}</span>
@@ -510,6 +578,34 @@ export default function FileList({
             </Button>
             <Button variant="destructive" onClick={() => handleDeletePlaylist(playlistToDelete!)}>
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit playlist name Dialog */}
+      <Dialog open={!!playlistToEdit} onOpenChange={open => !open && setPlaylistToEdit(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit playlist name</DialogTitle>
+            <DialogDescription>
+              <Input
+                name="playlistName"
+                placeholder="Playlist Name"
+                required
+                value={playlistName}
+                onChange={e => setPlaylistName(e.target.value)}
+              />
+
+              {error && <span className="mt-2 text-sm text-red-500">{error}</span>}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row justify-between">
+            <Button variant="outline" onClick={() => setPlaylistToEdit(null)}>
+              Cancel
+            </Button>
+            <Button variant="default" onClick={() => handleEditPlaylist(playlistToEdit, playlistName)}>
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>

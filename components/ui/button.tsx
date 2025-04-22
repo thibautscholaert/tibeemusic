@@ -9,16 +9,18 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground shadow hover:bg-primary/90',
+        default: 'border-transparent bg-primary text-primary-foreground shadow sm:hover:bg-primary/90',
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/60',
-        outline: 'bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
+          'border-transparent bg-destructive text-destructive-foreground shadow-sm sm:hover:bg-destructive/60',
+        outline: 'bg-background shadow-sm sm:hover:bg-accent sm:hover:text-accent-foreground',
         outlineSecondary:
-          'bg-secondary shadow-sm hover:bg-secondary/80 hover:text-secondary-foreground',
+          'bg-secondary shadow-sm sm:hover:bg-secondary/80 sm:hover:text-secondary-foreground',
         secondary:
-          'border-transparent bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        ghost: 'border-transparent hover:bg-accent hover:text-accent-foreground',
-        link: 'border-transparent text-primary underline-offset-4 hover:underline',
+          'border-transparent bg-secondary text-secondary-foreground shadow-sm sm:hover:bg-secondary/80',
+        accent:
+          'border-transparent bg-transparent text-lime-400 shadow-sm sm:hover:bg-secondary/80',
+        ghost: 'border-transparent sm:hover:bg-accent sm:hover:text-accent-foreground',
+        link: 'border-transparent text-primary underline-offset-4 sm:hover:underline',
       },
       size: {
         default: 'h-9 px-4 py-2',
@@ -37,7 +39,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 
